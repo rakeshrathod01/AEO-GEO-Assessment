@@ -138,6 +138,20 @@ def _citation(row: BenchmarkSource) -> str:
     return " ".join(bits)
 
 
+def list_benchmarks(db: Session) -> list[dict]:
+    """All benchmark rows (seeded first) for dashboard markers + source tooltips."""
+    seed_default_benchmarks(db)
+    rows = db.query(BenchmarkSource).order_by(BenchmarkSource.metric).all()
+    return [
+        {
+            "metric": r.metric, "value": r.value, "unit": r.unit,
+            "source": _citation(r), "source_name": r.source_name,
+            "source_url": r.source_url, "source_year": r.source_year, "notes": r.notes,
+        }
+        for r in rows
+    ]
+
+
 def get_benchmark(db: Session, metric: str, industry: str | None = None) -> Benchmark | None:
     """Look up a benchmark, preferring an industry-specific row over the default."""
     seed_default_benchmarks(db)

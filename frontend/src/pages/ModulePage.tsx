@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiGet, apiSend, type ModuleResult, type Project } from "@/lib/api";
 import { MODULES } from "@/lib/modules";
 import { ModuleResultView } from "@/components/ModuleResultView";
+import { LeadershipView } from "@/components/LeadershipView";
 
 // Modules with a real analyzer (Phases 2–5). Others remain scaffolded.
 const IMPLEMENTED = new Set([
@@ -42,6 +43,9 @@ export function ModulePage() {
   });
 
   if (!meta) return <div className="text-slate-400">Unknown module: {moduleKey}</div>;
+
+  // Module 9 has its own rich cross-module dashboard.
+  if (meta.key === "leadership") return <LeadershipView />;
 
   if (!IMPLEMENTED.has(meta.key)) {
     return (

@@ -5,9 +5,10 @@ A production, self-hostable, multi-tenant SaaS for enterprise **SEO**, **AEO**
 assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
-> **Build status:** Phases 0–5 complete — scaffold, ingestion, SEO modules 1–2,
-> Ahrefs modules 3–5, AEO Audit (6), and Prompt Identification (7) + GEO Audit (8).
-> Leadership Dashboard (9) + exports land in Phase 6 per the build order below.
+> **Build status:** Phases 0–6 complete — scaffold, ingestion, and all nine
+> modules (SEO 1–2, Ahrefs 3–5, AEO 6, Prompt Identification 7, GEO 8, Leadership
+> Dashboard 9) with the master Excel workbook + leadership PDF. Pitch deck (Phase 7)
+> and settings/deploy hardening (Phase 8) remain per the build order below.
 
 ---
 
@@ -61,14 +62,14 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   │   ├── ingest/      sitemap, ranking, fetcher, extract, match, pipeline, progress
 │   │   │   ├── analysis/    base, signals, eeat, internal_graph, aeo_features, technical_seo,
 │   │   │   │                on_page, internal_linking, backlinks, keyword_universe, aeo_audit,
-│   │   │   │                runner, registry
+│   │   │   │                prompt_identification, geo_audit, leadership, runner, registry
 │   │   │   ├── ahrefs/      Ahrefs MCP client (6-month window, cached)
 │   │   │   ├── prompts/     module 7 prompt generator (intent buckets)
 │   │   │   ├── geo/         module 8 swappable providers (api|serp) + brand matching
 │   │   │   ├── llm/         Anthropic client + model tiering (Haiku/Sonnet/Opus)
-│   │   │   ├── exports/     Excel (openpyxl) + PDF (reportlab) builders
+│   │   │   ├── exports/     excel, pdf (+ radar), prompts, master (leadership workbook)
 │   │   │   └── benchmarks.py  cited benchmark seeding + lookup
-│   │   ├── api/routes/      health, settings, projects, modules, ingest, analysis
+│   │   ├── api/routes/      health, settings, projects, modules, ingest, analysis, leadership
 │   │   ├── providers.py     BYO credential catalog (Ahrefs MCP, Firecrawl, LLMs)
 │   │   ├── modules_registry.py   the 9 modules (sidebar order)
 │   │   └── main.py
@@ -227,6 +228,31 @@ call, and degrade gracefully when unconfigured — adding/swapping a provider is
 one-line edit to `build_providers`. Per-prompt results: `GET /projects/{id}/geo-results`.
 Cost is bounded by `GEO_MAX_PROMPTS` (sampling is disclosed in the result).
 
+### Leadership Dashboard (Phase 6)
+
+**Module 9** runs all eight modules at the requested scope and synthesizes one
+**prioritized roadmap sequenced foundational SEO → AEO → GEO**. **Opus is used here
+(and only here)** for cross-module prioritization + the executive summary, degrading
+to deterministic ordering with no key.
+
+```
+POST /api/v1/projects/{id}/leadership?scope=site|page&page_id=   # synthesis
+GET  /api/v1/projects/{id}/leadership/export.xlsx?scope=         # master workbook
+GET  /api/v1/projects/{id}/leadership/report.pdf?scope=          # leadership PDF
+GET  /api/v1/projects/{id}/pages                                 # page-selector source
+```
+
+- **Page-selector re-scoping** — pass `scope=page&page_id=…` to re-scope the entire
+  dashboard (every module + roadmap) to a single page.
+- **Benchmark markers with sourced tooltips** — the report carries every
+  `benchmark_sources` entry (metric/value/unit + citation + URL); the dashboard
+  renders each as a marker whose hover tooltip names the source.
+- **Master Excel workbook** — Executive Summary tab + Module Scores, Roadmap, All
+  Findings, All Recommendations, Competitor Delta, and Benchmarks tabs.
+- **Leadership PDF** — honors the PDF table rules (font-11 wrap-text) and includes
+  the industry-benchmark **radar** (client vs benchmark across readiness rates) with
+  cited sources.
+
 ---
 
 ## Quickstart (local-first)
@@ -334,7 +360,7 @@ cd frontend && npm run build   # tsc type-check + production build
 | **3** | **Ahrefs MCP client (6-month window, cached) + modules 3 Internal Linking, 4 Backlinks, 5 Keyword Universe; PAA + featured-snippet queries persisted for Phase 5** ✅ |
 | **4** | **AEO Audit (module 6): AI Overview / PAA / Knowledge Panel / Voice + answer-paragraph & structure readiness from crawled content; PAA coverage vs persisted queries; data contract + competitor_delta + exports** ✅ |
 | **5** | **Prompt Identification (7): ~60-70 target prompts in intent buckets from PAA/snippets + content. GEO Audit (8): per-prompt query across ChatGPT/Gemini/Claude/Perplexity + SERP AI-Overview capture; brand mention/citation/position vs competitors per LLM; API vs SERP source flagged** ✅ |
-| 6 | Leadership Dashboard + exports |
+| **6** | **Leadership Dashboard (9): Opus cross-module synthesis → one prioritized SEO→AEO→GEO roadmap; benchmark markers with sourced tooltips; page-selector re-scoping; master Excel workbook + leadership PDF (table rules + radar)** ✅ |
 | 7 | AEO/GEO pitch deck (25–30 slides) |
 | 8 | Settings + deploy |
 

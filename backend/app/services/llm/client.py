@@ -85,6 +85,22 @@ class LLMClient:
         """Sonnet-tier free-text analysis (e.g. recommendation how-to prose)."""
         return self._call(Tier.analyze, system, user, max_tokens)
 
+    def synthesize_json(
+        self, system: str, user: str, max_tokens: int | None = None
+    ) -> dict | None:
+        """Opus-tier leadership synthesis / cross-module prioritization (JSON)."""
+        raw = self._call(Tier.synthesis, system, user, max_tokens)
+        if not raw:
+            return None
+        raw = raw.strip().strip("`")
+        start, end = raw.find("{"), raw.rfind("}")
+        if 0 <= start < end:
+            try:
+                return json.loads(raw[start : end + 1])
+            except json.JSONDecodeError:
+                return None
+        return None
+
     def extract_json(
         self, system: str, user: str, max_tokens: int | None = None
     ) -> dict | None:

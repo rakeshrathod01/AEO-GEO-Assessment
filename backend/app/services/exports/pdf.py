@@ -154,3 +154,78 @@ def build_pdf(result: dict, module_title: str) -> bytes:
 
     doc.build(story)
     return buf.getvalue()
+
+
+def _leadership_radar(report: dict) -> Drawing | None:
+    """Radar of 0..1 readiness rates (client vs benchmark) across modules."""
+    findings = []
+    seen = set()
+    for res in report.get("module_results", []):
+        for f in res.get("findings", []):
+            val, bench = f.get("value"), f.get("benchmark")
+            if (
+                isinstance(val, int | float) and isinstance(bench, int | float)
+                and 0 <= val <= 1 and 0 < bench <= 1 and f["signal"] not in seen
+            ):
+                seen.add(f["signal"])
+                findings.append(f)
+    return _radar({"findings": findings[:8]}) if len(findings) >= 3 else None
+
+
+def build_leadership_pdf(report: dict) -> bytes:
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+        topMargin=16 * mm, bottomMargin=16 * mm, title="Leadership Summary",
+    )
+    story = [_p("Leadership Summary — SEO / AEO / GEO", _H1)]
+    ls = report.get("layer_scores", {})
+    story.append(_p(
+        f"Scope: {report.get('scope')} &nbsp;|&nbsp; Overall: "
+        f"<b>{report.get('overall_score')}/100</b> ({report.get('status')}) &nbsp;|&nbsp; "
+        f"SEO {ls.get('SEO')} · AEO {ls.get('AEO')} · GEO {ls.get('GEO')} &nbsp;|&nbsp; "
+        f"{report.get('target_url')}", _CELL))
+    story.append(Spacer(1, 6))
+    story.append(_p(report.get("executive_summary", ""), _CELL))
+    story.append(Spacer(1, 8))
+
+    radar = _leadership_radar(report)
+    if radar is not None:
+        story.append(radar)
+        story.append(Spacer(1, 6))
+
+    story.append(_p("Module scores", _H2))
+    story.append(_table(
+        ["Module", "Layer", "Score", "Status"],
+        _rows(report.get("modules", []), ["title", "layer", "score", "status"]),
+        [180, 60, 60, 80],
+    ))
+    story.append(Spacer(1, 10))
+
+    story.append(_p("Prioritized roadmap (foundational SEO → AEO → GEO)", _H2))
+    story.append(_table(
+        ["#", "Phase", "Priority", "Action", "How To"],
+        [[i["order"], i["phase"], i["priority"], i["action"], i.get("how_to")]
+         for i in report.get("roadmap", [])],
+        [24, 50, 55, 150, 161],
+    ))
+
+    comp = report.get("competitor_summary", [])
+    if comp:
+        story.append(Spacer(1, 10))
+        story.append(_p("Top competitor gaps", _H2))
+        story.append(_table(
+            ["Competitor", "Signal", "Us", "Them", "Gap"],
+            _rows(comp, ["competitor", "signal", "us", "them", "gap"]),
+            [120, 140, 50, 50, 50],
+        ))
+
+    benchmarks = report.get("benchmarks", [])
+    if benchmarks:
+        story.append(Spacer(1, 12))
+        story.append(_p("Benchmark sources", _H2))
+        for b in benchmarks:
+            story.append(_p(f"• {b['metric']}: {b.get('source')}", _NOTE))
+
+    doc.build(story)
+    return buf.getvalue()

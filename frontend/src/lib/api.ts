@@ -160,3 +160,58 @@ export const exportUrl = (
   const file = kind === "xlsx" ? "export.xlsx" : "report.pdf";
   return `${API_PREFIX}/projects/${projectId}/modules/${moduleKey}/${file}?scope=${scope}`;
 };
+
+export const leadershipExportUrl = (projectId: number, kind: "xlsx" | "pdf", scope: string) => {
+  const file = kind === "xlsx" ? "export.xlsx" : "report.pdf";
+  return `${API_PREFIX}/projects/${projectId}/leadership/${file}?scope=${scope}`;
+};
+
+export interface ModuleScore {
+  key: string;
+  title: string;
+  layer: "SEO" | "AEO" | "GEO";
+  score: number;
+  status: "pass" | "warn" | "fail";
+}
+
+export interface RoadmapItem {
+  phase: "SEO" | "AEO" | "GEO";
+  order: number;
+  priority: "high" | "med" | "low";
+  layer: string;
+  module: string;
+  action: string;
+  how_to: string | null;
+  effort: string | null;
+  impact: string | null;
+  rationale: string | null;
+}
+
+export interface BenchmarkMarker {
+  metric: string;
+  value: number | null;
+  unit: string | null;
+  source: string;
+  source_url: string | null;
+}
+
+export interface LeadershipReport {
+  scope: "site" | "page";
+  target_url: string;
+  generated_at: string | null;
+  overall_score: number;
+  status: "pass" | "warn" | "fail";
+  layer_scores: { SEO: number | null; AEO: number | null; GEO: number | null };
+  modules: ModuleScore[];
+  executive_summary: string;
+  roadmap: RoadmapItem[];
+  benchmarks: BenchmarkMarker[];
+  competitor_summary: CompetitorDelta[];
+  synthesis_source: string;
+}
+
+export interface ProjectPage {
+  id: number;
+  url: string;
+  title: string | null;
+}
