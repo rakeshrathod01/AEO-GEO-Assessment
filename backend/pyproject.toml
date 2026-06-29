@@ -1,0 +1,20 @@
+[project]
+name = "eclerx-aeo-geo-backend"
+version = "0.1.0"
+description = "eClerx SEO/AEO/GEO Enterprise Assessment Platform — backend"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B008"]  # FastAPI uses function calls in argument defaults (Depends)
