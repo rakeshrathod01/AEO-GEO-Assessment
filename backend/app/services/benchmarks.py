@@ -78,6 +78,25 @@ DEFAULT_BENCHMARKS: dict[str, tuple] = {
     "striking_distance": (10, "position", "Common SEO practice — positions 4-10",
                           "https://ahrefs.com/blog/striking-distance-keywords/", 2023,
                           "Positions 4-10 are quick-win optimization targets."),
+    # AEO (Answer Engine Optimization)
+    "aeo_answer_length": (54, "words", "Backlinko — Featured Snippet study",
+                          "https://backlinko.com/hub/seo/featured-snippets", 2023,
+                          "Snippet-winning answers average ~40-60 words; lead with the answer."),
+    "aeo_faq_schema": (1.0, "bool", "Google Search Central — FAQ structured data",
+                       "https://developers.google.com/search/docs/appearance/structured-data/faqpage",
+                       2024, "FAQ/QAPage markup powers PAA and rich results."),
+    "aeo_question_headings": (0.3, "ratio", "Google — People Also Ask / question content",
+                              "https://developers.google.com/search/docs/appearance/featured-snippets",
+                              2024, "Question-led H2/H3 align content with PAA and AI Overviews."),
+    "aeo_org_schema": (1.0, "bool", "Google Search Central — Organization structured data",
+                       "https://developers.google.com/search/docs/appearance/structured-data/organization",
+                       2024, "Organization/sameAs markup supports Knowledge Panel eligibility."),
+    "aeo_speakable": (1.0, "bool", "Google Search Central — Speakable (voice)",
+                      "https://developers.google.com/search/docs/appearance/structured-data/speakable",
+                      2024, "Speakable markup flags voice-friendly answer passages."),
+    "aeo_structure": (1.0, "bool", "Google — Content structure for rich results",
+                      "https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data",
+                      2024, "Lists/tables and clear headings improve answer extractability."),
 }
 
 

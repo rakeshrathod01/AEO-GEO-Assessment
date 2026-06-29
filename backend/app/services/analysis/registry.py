@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.services.analysis import (
+    aeo_audit,
     backlinks,
     internal_linking,
     keyword_universe,
@@ -16,6 +17,7 @@ ANALYZERS = {
     internal_linking.MODULE: internal_linking.analyze,
     backlinks.MODULE: backlinks.analyze,
     keyword_universe.MODULE: keyword_universe.analyze,
+    aeo_audit.MODULE: aeo_audit.analyze,
 }
 
 

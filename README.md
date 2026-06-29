@@ -6,8 +6,8 @@ assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
 > **Build status:** Phase 0 (scaffold) + Phase 1 (ingestion) + Phase 2 (SEO
-> modules 1–2) + Phase 3 (Ahrefs modules 3–5) complete. Modules 6–9 land in later
-> phases per the build order below.
+> modules 1–2) + Phase 3 (Ahrefs modules 3–5) + Phase 4 (AEO Audit, module 6)
+> complete. Modules 7–9 land in later phases per the build order below.
 
 ---
 
@@ -59,8 +59,9 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   ├── schemas/         the shared DATA CONTRACT + request/response models
 │   │   ├── services/        external-call cache helper
 │   │   │   ├── ingest/      sitemap, ranking, fetcher, extract, match, pipeline, progress
-│   │   │   ├── analysis/    base, signals, eeat, internal_graph, technical_seo, on_page,
-│   │   │   │                internal_linking, backlinks, keyword_universe, runner, registry
+│   │   │   ├── analysis/    base, signals, eeat, internal_graph, aeo_features, technical_seo,
+│   │   │   │                on_page, internal_linking, backlinks, keyword_universe, aeo_audit,
+│   │   │   │                runner, registry
 │   │   │   ├── ahrefs/      Ahrefs MCP client (6-month window, cached)
 │   │   │   ├── llm/         Anthropic client + model tiering (Haiku/Sonnet/Opus)
 │   │   │   ├── exports/     Excel (openpyxl) + PDF (reportlab) builders
@@ -177,6 +178,25 @@ call **cached** in `api_cache`. Missing/unreachable MCP → modules degrade to a
 All three return the data contract at site + page scope with `competitor_delta`
 and the same Excel/PDF exports.
 
+### AEO Audit (Phase 4)
+
+Module **6 AEO Audit** scores how ready the crawled content is to be surfaced/cited
+by AI answer engines, from an AEO feature pass over the raw HTML
+(`app/services/analysis/aeo_features.py`):
+
+- **AI Overview readiness** — concise lead answer + answer schema (FAQ/HowTo/Article)
+  + question-led headings.
+- **People Also Ask readiness** — question H2/H3 + FAQ schema, scored against the
+  **PAA queries persisted in Phase 3** (coverage = share of tracked PAA questions the
+  content addresses).
+- **Knowledge Panel readiness** — Organization schema / entity signals.
+- **Voice search readiness** — Speakable schema + conversational concise answers.
+- **Answer-paragraph readiness** — a direct ~40-60 word answer near the top.
+- **Content-structure readiness** — lists/tables for extractability.
+
+Each finding carries a cited benchmark (Google Search Central, Backlinko). Returns
+the data contract at site + page scope with `competitor_delta` and Excel/PDF exports.
+
 ---
 
 ## Quickstart (local-first)
@@ -259,6 +279,10 @@ disable), the internal-link graph, the Internal Linking / Backlinks / Keyword
 Universe analyzers (incl. SERP-query persistence + dedupe), and the modules +
 serp-queries API end-to-end with a fake Ahrefs client (no network/keys).
 
+Phase 4 covers: AEO feature extraction (question headings, concise answer, schema
+detection), the AEO Audit analyzer across all six readiness surfaces, PAA coverage
+vs persisted serp_queries, and the module + export API end-to-end.
+
 ```bash
 cd frontend && npm run build   # tsc type-check + production build
 ```
@@ -273,7 +297,7 @@ cd frontend && npm run build   # tsc type-check + production build
 | **1** | **Ingestion pipeline: sitemap/Excel/paste input, top-50 ranking, Firecrawl + Playwright-stealth fallback, signal extraction, competitor matching, Celery progress stream** ✅ |
 | **2** | **SEO modules 1–2 (Technical SEO, On-Page incl. schema/E-E-A-T/structure) to the data contract at site+page scope with competitor_delta; Haiku/Sonnet tiering; Excel + PDF exports** ✅ |
 | **3** | **Ahrefs MCP client (6-month window, cached) + modules 3 Internal Linking, 4 Backlinks, 5 Keyword Universe; PAA + featured-snippet queries persisted for Phase 5** ✅ |
-| 4 | AEO Audit |
+| **4** | **AEO Audit (module 6): AI Overview / PAA / Knowledge Panel / Voice + answer-paragraph & structure readiness from crawled content; PAA coverage vs persisted queries; data contract + competitor_delta + exports** ✅ |
 | 5 | Prompt Identification + GEO Audit |
 | 6 | Leadership Dashboard + exports |
 | 7 | AEO/GEO pitch deck (25–30 slides) |
