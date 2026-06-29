@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Download, FileText, Info } from "lucide-react";
+import { Download, FileText, Info, Presentation } from "lucide-react";
 import {
   apiGet,
   apiSend,
+  deckUrl,
   leadershipExportUrl,
   type LeadershipReport,
   type Project,
@@ -184,9 +185,15 @@ export function LeadershipView({ projectId: fixedId }: { projectId?: number }) {
               </a>
               <a
                 href={leadershipExportUrl(projectId!, "pdf", report.scope)}
-                className="flex items-center gap-2 rounded-md bg-eclerx-red px-3 py-2 text-sm font-medium text-white hover:bg-eclerx-red-dark"
+                className="flex items-center gap-2 rounded-md border border-navy-700 px-3 py-2 text-sm text-slate-200 hover:bg-navy-800"
               >
                 <FileText size={16} /> Leadership PDF
+              </a>
+              <a
+                href={deckUrl(projectId!, report.scope)}
+                className="flex items-center gap-2 rounded-md bg-eclerx-red px-3 py-2 text-sm font-medium text-white hover:bg-eclerx-red-dark"
+              >
+                <Presentation size={16} /> Download Pitch Deck
               </a>
             </div>
           </div>

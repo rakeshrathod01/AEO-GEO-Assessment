@@ -5,10 +5,10 @@ A production, self-hostable, multi-tenant SaaS for enterprise **SEO**, **AEO**
 assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
-> **Build status:** Phases 0–6 complete — scaffold, ingestion, and all nine
-> modules (SEO 1–2, Ahrefs 3–5, AEO 6, Prompt Identification 7, GEO 8, Leadership
-> Dashboard 9) with the master Excel workbook + leadership PDF. Pitch deck (Phase 7)
-> and settings/deploy hardening (Phase 8) remain per the build order below.
+> **Build status:** Phases 0–7 complete — scaffold, ingestion, all nine modules
+> (SEO 1–2, Ahrefs 3–5, AEO 6, Prompt Identification 7, GEO 8, Leadership Dashboard
+> 9), master Excel + leadership PDF, and the AEO/GEO **pitch deck**. Settings/deploy
+> hardening (Phase 8) remains per the build order below.
 
 ---
 
@@ -67,7 +67,7 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   │   ├── prompts/     module 7 prompt generator (intent buckets)
 │   │   │   ├── geo/         module 8 swappable providers (api|serp) + brand matching
 │   │   │   ├── llm/         Anthropic client + model tiering (Haiku/Sonnet/Opus)
-│   │   │   ├── exports/     excel, pdf (+ radar), prompts, master (leadership workbook)
+│   │   │   ├── exports/     excel, pdf (+ radar), prompts, master (workbook), deck (pptx)
 │   │   │   └── benchmarks.py  cited benchmark seeding + lookup
 │   │   ├── api/routes/      health, settings, projects, modules, ingest, analysis, leadership
 │   │   ├── providers.py     BYO credential catalog (Ahrefs MCP, Firecrawl, LLMs)
@@ -253,6 +253,20 @@ GET  /api/v1/projects/{id}/pages                                 # page-selector
   the industry-benchmark **radar** (client vs benchmark across readiness rates) with
   cited sources.
 
+### AEO/GEO Pitch Deck (Phase 7)
+
+`GET /api/v1/projects/{id}/leadership/deck.pptx?scope=` builds a **28-slide**,
+client-ready PowerPoint (`app/services/exports/deck.py`) from the latest leadership
+synthesis — surfaced as the **Download Pitch Deck** button on the dashboard.
+
+- **Storytelling arc**: Context → Current state → Gaps vs competitors →
+  SEO/AEO/GEO opportunity → Roadmap → Why eClerx → CTA (section dividers between).
+- **eClerx navy/red brand** on every slide; **client logo fetched from the web**
+  (Clearbit → Google favicon fallback, injectable, degrades gracefully offline).
+- **One "Key Takeaway" callout per content slide**; **native pptx charts** (readiness
+  scorecard, module bars, competitor us-vs-them, AEO surfaces, GEO citation rate)
+  instead of walls of text.
+
 ---
 
 ## Quickstart (local-first)
@@ -344,6 +358,11 @@ GEO domain extraction + brand mention/citation/position detection, the GEO analy
 with fake providers (API + SERP), graceful no-provider degradation, and the
 prompts/geo API + exports end-to-end (no network/keys).
 
+Phase 6-7 cover: leadership synthesis (8-module aggregation, SEO→AEO→GEO ordering,
+sourced benchmarks, page re-scoping), the master Excel + leadership PDF, and the
+pitch deck (slide count in range, ≥1 Key Takeaway per content slide, charts, logo
+embed + offline degrade) — all end-to-end with fakes.
+
 ```bash
 cd frontend && npm run build   # tsc type-check + production build
 ```
@@ -361,7 +380,7 @@ cd frontend && npm run build   # tsc type-check + production build
 | **4** | **AEO Audit (module 6): AI Overview / PAA / Knowledge Panel / Voice + answer-paragraph & structure readiness from crawled content; PAA coverage vs persisted queries; data contract + competitor_delta + exports** ✅ |
 | **5** | **Prompt Identification (7): ~60-70 target prompts in intent buckets from PAA/snippets + content. GEO Audit (8): per-prompt query across ChatGPT/Gemini/Claude/Perplexity + SERP AI-Overview capture; brand mention/citation/position vs competitors per LLM; API vs SERP source flagged** ✅ |
 | **6** | **Leadership Dashboard (9): Opus cross-module synthesis → one prioritized SEO→AEO→GEO roadmap; benchmark markers with sourced tooltips; page-selector re-scoping; master Excel workbook + leadership PDF (table rules + radar)** ✅ |
-| 7 | AEO/GEO pitch deck (25–30 slides) |
+| **7** | **AEO/GEO pitch deck (28 slides): storytelling arc Context→Current state→Gaps→Opportunity→Roadmap→eClerx value→CTA; navy/red brand, web-fetched client logo, one Key Takeaway per slide, native charts; Download Pitch Deck button** ✅ |
 | 8 | Settings + deploy |
 
 ## Configuration

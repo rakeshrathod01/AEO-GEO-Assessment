@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from app.schemas.contract import Scope
 from app.schemas.leadership import LeadershipReport
 from app.services.analysis.leadership import MODULE, run_leadership
 from app.services.analysis.runner import AnalysisError
+from app.services.exports.deck import build_pitch_deck
 from app.services.exports.master import build_master_excel
 from app.services.exports.pdf import build_leadership_pdf
 
@@ -72,6 +74,23 @@ def export_leadership_pdf(
     return Response(
         content=data, media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="leadership_summary.pdf"'},
+    )
+
+
+@router.get("/leadership/deck.pptx")
+def export_pitch_deck(
+    project_id: int, scope: Scope = Query(default=Scope.site), db: Session = Depends(get_db)
+) -> Response:
+    """25-30 slide AEO/GEO pitch deck built from the latest leadership synthesis."""
+    report = _latest_report(db, project_id, scope.value)
+    project = db.get(Project, project_id)
+    domain = urlparse(project.target_url).netloc.lower().replace("www.", "") if project else ""
+    name = project.name if project else "Client"
+    data = build_pitch_deck(report, {"name": name, "domain": domain})
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": 'attachment; filename="pitch_deck.pptx"'},
     )
 
 

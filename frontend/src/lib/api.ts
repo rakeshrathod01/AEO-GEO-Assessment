@@ -166,6 +166,9 @@ export const leadershipExportUrl = (projectId: number, kind: "xlsx" | "pdf", sco
   return `${API_PREFIX}/projects/${projectId}/leadership/${file}?scope=${scope}`;
 };
 
+export const deckUrl = (projectId: number, scope: string) =>
+  `${API_PREFIX}/projects/${projectId}/leadership/deck.pptx?scope=${scope}`;
+
 export interface ModuleScore {
   key: string;
   title: string;

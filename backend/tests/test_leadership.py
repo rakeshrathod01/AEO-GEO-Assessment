@@ -78,6 +78,23 @@ def test_export_before_synthesis_409(client):
     assert r.status_code == 409
 
 
+def test_pitch_deck_download(client, monkeypatch):
+    # Keep the deck offline + deterministic (no logo fetch).
+    monkeypatch.setattr("app.services.exports.deck._default_fetch_logo", lambda _d: None)
+    pid = _project_with_crawl(client)
+    client.post(f"/api/v1/projects/{pid}/leadership?scope=site")
+    pptx = client.get(f"/api/v1/projects/{pid}/leadership/deck.pptx?scope=site")
+    assert pptx.status_code == 200
+    assert pptx.content[:2] == b"PK"
+    assert "presentationml" in pptx.headers["content-type"]
+
+
+def test_pitch_deck_before_synthesis_409(client):
+    pid = _project_with_crawl(client)
+    r = client.get(f"/api/v1/projects/{pid}/leadership/deck.pptx?scope=site")
+    assert r.status_code == 409
+
+
 def test_pages_empty_without_crawl(client):
     pid = client.post(
         "/api/v1/projects", json={"name": "Empty", "target_url": "https://e.com"}
