@@ -69,6 +69,16 @@ class Settings(BaseSettings):
     # production where a Celery worker consumes the queue.
     INGEST_INLINE: bool = True
 
+    # --- AI model tiering (cost control) ---
+    # Haiku: extraction/classification. Sonnet: per-module analysis. Opus:
+    # leadership synthesis only (Phase 6).
+    MODEL_HAIKU: str = "claude-haiku-4-5"
+    MODEL_SONNET: str = "claude-sonnet-4-6"
+    MODEL_OPUS: str = "claude-opus-4-8"
+    LLM_MAX_TOKENS: int = 2048
+    # Cap cleaned text sent to the LLM (chars) — send cleaned text, never raw HTML.
+    LLM_TEXT_CHAR_LIMIT: int = 12000
+
     @property
     def celery_broker(self) -> str:
         return self.CELERY_BROKER_URL or self.REDIS_URL

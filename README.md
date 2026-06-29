@@ -5,8 +5,8 @@ A production, self-hostable, multi-tenant SaaS for enterprise **SEO**, **AEO**
 assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
-> **Build status:** Phase 0 (scaffold) + Phase 1 (ingestion pipeline) complete.
-> Modules 1–9 land in later phases per the build order below.
+> **Build status:** Phase 0 (scaffold) + Phase 1 (ingestion) + Phase 2 (SEO
+> modules 1–2) complete. Modules 3–9 land in later phases per the build order below.
 
 ---
 
@@ -57,8 +57,12 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   ├── models/          projects, api_keys, benchmark_sources, api_cache, analysis
 │   │   ├── schemas/         the shared DATA CONTRACT + request/response models
 │   │   ├── services/        external-call cache helper
-│   │   │   └── ingest/      sitemap, ranking, fetcher, extract, match, pipeline, progress
-│   │   ├── api/routes/      health, settings, projects, modules, ingest
+│   │   │   ├── ingest/      sitemap, ranking, fetcher, extract, match, pipeline, progress
+│   │   │   ├── analysis/    base, signals, eeat, technical_seo, on_page, runner, registry
+│   │   │   ├── llm/         Anthropic client + model tiering (Haiku/Sonnet/Opus)
+│   │   │   ├── exports/     Excel (openpyxl) + PDF (reportlab) builders
+│   │   │   └── benchmarks.py  cited benchmark seeding + lookup
+│   │   ├── api/routes/      health, settings, projects, modules, ingest, analysis
 │   │   ├── providers.py     BYO credential catalog (Ahrefs MCP, Firecrawl, LLMs)
 │   │   ├── modules_registry.py   the 9 modules (sidebar order)
 │   │   └── main.py
@@ -121,6 +125,33 @@ Flow: **resolve URLs → rank → select top-50 → crawl → extract → store*
 - **Progress**: a Celery task streams progress; the UI consumes it via SSE
   (`GET /api/v1/crawl/jobs/{id}/stream`) with a DB snapshot fallback. Local-first
   runs execute inline (`INGEST_INLINE=true`) so no Redis/worker is required.
+
+### SEO modules (Phase 2)
+
+Modules **1 Technical SEO** and **2 On-Page SEO** analyze the latest crawl and
+return the **data contract** (`ModuleResult`) at both `site` and `page` scope,
+including `competitor_delta` against the tracked competitors.
+
+```
+POST /api/v1/projects/{id}/modules/{technical_seo|on_page}/analyze?scope=site|page
+GET  /api/v1/projects/{id}/modules/{key}/export.xlsx?scope=site|page   # Excel
+GET  /api/v1/projects/{id}/modules/{key}/report.pdf?scope=site|page    # PDF
+```
+
+- **Technical SEO**: indexability, canonical, HTTPS, mobile viewport, HTTP status
+  health, structured-data presence, declared language.
+- **On-Page SEO**: title/meta length, single-H1 + heading **structure**, content
+  depth, image alt coverage, Open Graph, **schema** markup, and **E-E-A-T**
+  signals (author, credentials, citations, dates, trust).
+- **Scoring** is deterministic and weighted (pass=full / warn=half / fail=0); every
+  finding carries a **cited benchmark** from `benchmark_sources` (seeded with
+  Moz / Google Search Central / Backlinko citations, reused never re-derived).
+- **Model tiering** (`app/services/llm`): **Haiku** refines E-E-A-T extraction
+  (page scope), **Sonnet** upgrades recommendation how-to prose; calls are
+  prompt-cached + DB-cached and **degrade gracefully to deterministic logic when
+  no Anthropic key is set** — so the platform runs (and tests pass) without keys.
+- **Exports**: every result has **Export Excel** (multi-sheet) and **Generate PDF**
+  (font-11 wrap-text tables + an **industry-benchmark radar** with cited sources).
 
 ---
 
@@ -195,6 +226,10 @@ index) parsing, the ranking heuristic, HTML signal extraction, the
 Firecrawl→Playwright fallback decision, competitor matching, and the full
 ingestion pipeline + API end-to-end with a fake fetcher (no network).
 
+Phase 2 covers: benchmark seeding/lookup, the Technical SEO + On-Page analyzers
+(scoring, findings, recommendations, competitor_delta), E-E-A-T heuristics, the
+Excel + PDF builders, and the analyze + export API end-to-end (no network/keys).
+
 ```bash
 cd frontend && npm run build   # tsc type-check + production build
 ```
@@ -207,7 +242,7 @@ cd frontend && npm run build   # tsc type-check + production build
 |-------|-------|
 | **0** | **Scaffold: backend + frontend skeleton, data contract, DB models, BYO-key encryption, caching, tests, CI hook** ✅ |
 | **1** | **Ingestion pipeline: sitemap/Excel/paste input, top-50 ranking, Firecrawl + Playwright-stealth fallback, signal extraction, competitor matching, Celery progress stream** ✅ |
-| 2 | SEO modules (Technical, On-Page) |
+| **2** | **SEO modules 1–2 (Technical SEO, On-Page incl. schema/E-E-A-T/structure) to the data contract at site+page scope with competitor_delta; Haiku/Sonnet tiering; Excel + PDF exports** ✅ |
 | 3 | Ahrefs modules (Internal Linking, Backlinks, Keyword Universe) |
 | 4 | AEO Audit |
 | 5 | Prompt Identification + GEO Audit |

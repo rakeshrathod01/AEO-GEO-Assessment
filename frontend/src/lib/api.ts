@@ -111,3 +111,52 @@ export interface ProgressEvent {
   percent: number;
   status: string;
 }
+
+export interface Finding {
+  signal: string;
+  status: "pass" | "warn" | "fail";
+  value: string | number | boolean | null;
+  benchmark: string | number | null;
+  source: string | null;
+  evidence: string | null;
+}
+
+export interface Recommendation {
+  priority: "high" | "med" | "low";
+  layer: "SEO" | "AEO" | "GEO";
+  action: string;
+  how_to: string | null;
+  effort: string | null;
+  impact: string | null;
+}
+
+export interface CompetitorDelta {
+  competitor: string;
+  signal: string;
+  them: string | number | null;
+  us: string | number | null;
+  gap: string | number | null;
+}
+
+export interface ModuleResult {
+  scope: "site" | "page";
+  target_url: string;
+  score: number;
+  status: "pass" | "warn" | "fail";
+  findings: Finding[];
+  recommendations: Recommendation[];
+  competitor_delta: CompetitorDelta[];
+  module: string | null;
+  generated_at: string | null;
+}
+
+const API_PREFIX = "/api/v1";
+export const exportUrl = (
+  projectId: number,
+  moduleKey: string,
+  kind: "xlsx" | "pdf",
+  scope: string,
+) => {
+  const file = kind === "xlsx" ? "export.xlsx" : "report.pdf";
+  return `${API_PREFIX}/projects/${projectId}/modules/${moduleKey}/${file}?scope=${scope}`;
+};
