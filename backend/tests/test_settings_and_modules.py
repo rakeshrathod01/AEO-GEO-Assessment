@@ -15,16 +15,50 @@ def test_upsert_and_mask_api_key(client: TestClient):
 
 
 def test_upsert_replaces_existing(client: TestClient):
-    client.put("/api/v1/settings/keys", json={"provider": "ahrefs", "value": "key-one"})
-    client.put("/api/v1/settings/keys", json={"provider": "ahrefs", "value": "key-two-xyz"})
+    client.put("/api/v1/settings/keys", json={"provider": "openai", "value": "key-one"})
+    client.put("/api/v1/settings/keys", json={"provider": "openai", "value": "key-two-xyz"})
     r = client.get("/api/v1/settings/keys")
-    keys = [k for k in r.json() if k["provider"] == "ahrefs"]
+    keys = [k for k in r.json() if k["provider"] == "openai"]
     assert len(keys) == 1  # replaced, not duplicated
 
 
 def test_unsupported_provider_rejected(client: TestClient):
     r = client.put("/api/v1/settings/keys", json={"provider": "evilcorp", "value": "x"})
     assert r.status_code == 422
+
+
+def test_empty_value_rejected(client: TestClient):
+    r = client.put("/api/v1/settings/keys", json={"provider": "anthropic", "value": "   "})
+    assert r.status_code == 422
+
+
+def test_providers_catalog(client: TestClient):
+    r = client.get("/api/v1/settings/providers")
+    assert r.status_code == 200
+    catalog = r.json()
+    keys = {p["key"] for p in catalog}
+    assert {"ahrefs_mcp_url", "firecrawl", "anthropic", "openai", "gemini", "perplexity"} <= keys
+    ahrefs = next(p for p in catalog if p["key"] == "ahrefs_mcp_url")
+    assert ahrefs["kind"] == "url" and ahrefs["required"] is True
+    assert ahrefs["configured"] is False
+
+
+def test_url_kind_returned_in_full(client: TestClient):
+    client.put(
+        "/api/v1/settings/keys",
+        json={"provider": "ahrefs_mcp_url", "value": "https://ahrefs-mcp.example.com"},
+    )
+    r = client.get("/api/v1/settings/keys")
+    ahrefs = next(k for k in r.json() if k["provider"] == "ahrefs_mcp_url")
+    assert ahrefs["kind"] == "url"
+    assert ahrefs["value"] == "https://ahrefs-mcp.example.com"  # not masked
+
+    # And a secret stays masked.
+    client.put("/api/v1/settings/keys", json={"provider": "anthropic", "value": "sk-ant-secret123"})
+    r2 = client.get("/api/v1/settings/keys")
+    anth = next(k for k in r2.json() if k["provider"] == "anthropic")
+    assert anth["value"] is None
+    assert "sk-ant" not in anth["masked_value"]
 
 
 def test_list_modules_returns_nine(client: TestClient):

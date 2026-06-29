@@ -3,9 +3,27 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-navy-950 text-slate-200 antialiased;
+}
+
+/* Subtle scrollbars on the dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-navy-700;
+}
+::-webkit-scrollbar-track {
+  @apply bg-navy-950;
 }

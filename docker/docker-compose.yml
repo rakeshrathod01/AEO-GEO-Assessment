@@ -1,0 +1,76 @@
+# Cloud-ready stack: api, worker, redis, frontend (+ optional Postgres).
+# Build contexts are relative to the repo root (one level up from /docker).
+#
+# Run from repo root:
+#   SECRET_KEY=$(python3 -c "import secrets;print(secrets.token_urlsafe(48))") \
+#     docker compose -f docker/docker-compose.yml up --build
+#
+# Local-first default uses SQLite on a named volume. To use Postgres instead,
+# uncomment the `postgres` service and point DATABASE_URL at it.
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # postgres:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: eclerx
+  #     POSTGRES_PASSWORD: eclerx
+  #     POSTGRES_DB: eclerx
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/eclerx_assessment.db}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in the environment}
+      APP_ENV: ${APP_ENV:-production}
+    volumes:
+      - appdata:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/eclerx_assessment.db}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in the environment}
+      APP_ENV: ${APP_ENV:-production}
+    volumes:
+      - appdata:/data
+    depends_on:
+      - redis
+      - api
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  appdata:
+  # pgdata:

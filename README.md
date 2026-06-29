@@ -58,13 +58,19 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   ├── schemas/         the shared DATA CONTRACT + request/response models
 │   │   ├── services/        external-call cache helper
 │   │   ├── api/routes/      health, settings, projects, modules
+│   │   ├── providers.py     BYO credential catalog (Ahrefs MCP, Firecrawl, LLMs)
 │   │   ├── modules_registry.py   the 9 modules (sidebar order)
 │   │   └── main.py
+│   ├── alembic/             migrations (env + initial schema)
 │   └── tests/
-├── frontend/                React + Vite app (9-module sidebar, Dashboard, Settings)
-├── docker-compose.yml       Postgres + Redis + api + worker (cloud-ready)
+├── frontend/                React + Vite app (dark navy/red theme)
+│   ├── src/                 9-module sidebar, Dashboard, Settings, module routes
+│   ├── Dockerfile           nginx static serve + /api proxy
+│   └── nginx.conf
+├── docker/
+│   └── docker-compose.yml   api, worker, redis, frontend (cloud-ready)
 ├── Makefile                 common dev tasks
-└── .env.example
+└── .env.example             every BYO key documented
 ```
 
 ### The data contract
@@ -123,12 +129,27 @@ make frontend-dev
 make frontend-build
 ```
 
-### Run with Docker (Postgres + Redis)
+### Database migrations (Alembic)
+
+```bash
+cd backend && . .venv/bin/activate
+alembic upgrade head                         # apply migrations
+alembic revision --autogenerate -m "change"  # generate a new migration
+```
+
+> The app also `create_all`s tables on startup for zero-config local runs; use
+> Alembic for controlled schema changes in staging/production.
+
+### Run with Docker (api + worker + redis + frontend)
 
 ```bash
 SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))") \
-  docker compose up --build
+  docker compose -f docker/docker-compose.yml up --build
+# frontend: http://localhost:5173   ·   api: http://localhost:8000
 ```
+
+Postgres is included (commented) in the compose file — uncomment the service and
+set `DATABASE_URL` to switch from the default SQLite volume.
 
 ---
 
@@ -164,5 +185,20 @@ cd frontend && npm run build   # tsc type-check + production build
 ## Configuration
 
 All config is environment-driven (`backend/app/core/config.py`). See
-`.env.example`. Provider API keys are **not** environment variables — they are
+`.env.example`. Provider credentials are **not** environment variables — they are
 managed in the Settings UI and encrypted at rest.
+
+### BYO credentials (Settings page)
+
+| Provider | Kind | Required | Used by |
+|----------|------|----------|---------|
+| Ahrefs MCP URL | url | ✅ | Internal Linking, Backlinks, Keyword Universe |
+| Firecrawl API key | secret | ✅ | Crawler (primary) |
+| Anthropic API key | secret | ✅ | All AI analysis (Haiku/Sonnet/Opus) |
+| OpenAI API key | secret | optional | GEO audit (ChatGPT) |
+| Gemini API key | secret | optional | GEO audit (Gemini) |
+| Perplexity API key | secret | optional | GEO audit (Perplexity) |
+
+Secret-kind values are returned only as a masked preview (`****abcd`); the
+URL-kind value (Ahrefs MCP URL) is returned in full since it is configuration,
+not a credential. The catalog is served at `GET /api/v1/settings/providers`.

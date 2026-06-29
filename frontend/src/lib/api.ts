@@ -22,11 +22,23 @@ export async function apiSend<T>(
   return res.json() as Promise<T>;
 }
 
+export interface ProviderOut {
+  key: string;
+  label: string;
+  kind: "secret" | "url";
+  required: boolean;
+  group: "core" | "optional_llm";
+  help: string | null;
+  configured: boolean;
+}
+
 export interface ApiKeyOut {
   id: number;
   provider: string;
+  kind: "secret" | "url";
   label: string | null;
   masked_value: string;
+  value: string | null;
   created_at: string;
   updated_at: string;
 }

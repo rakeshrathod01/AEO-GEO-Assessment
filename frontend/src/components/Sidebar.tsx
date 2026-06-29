@@ -27,48 +27,42 @@ const ICONS: Record<string, LucideIcon> = {
   leadership: LayoutDashboard,
 };
 
+const linkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+    isActive
+      ? "bg-eclerx-red/15 font-medium text-white shadow-[inset_2px_0_0_0_#e4002b]"
+      : "text-slate-400 hover:bg-navy-800 hover:text-slate-100",
+  );
+
 export function Sidebar() {
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-slate-200 bg-white">
-      <div className="px-5 py-5">
-        <div className="text-lg font-semibold text-brand-dark">eClerx</div>
-        <div className="text-xs text-slate-500">SEO · AEO · GEO Assessment</div>
+    <aside className="flex h-screen w-64 flex-col border-r border-navy-800 bg-navy-900">
+      <div className="flex items-center gap-2 px-5 py-5">
+        <div className="h-7 w-1.5 rounded-full bg-eclerx-red" />
+        <div>
+          <div className="text-lg font-bold tracking-tight text-white">eClerx</div>
+          <div className="text-[11px] uppercase tracking-wider text-slate-500">
+            SEO · AEO · GEO
+          </div>
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3">
         {MODULES.map((m) => {
           const Icon = ICONS[m.key] ?? FileText;
           return (
-            <NavLink
-              key={m.key}
-              to={`/modules/${m.key}`}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-brand/10 font-medium text-brand"
-                    : "text-slate-600 hover:bg-slate-100",
-                )
-              }
-            >
+            <NavLink key={m.key} to={`/modules/${m.key}`} className={linkClass}>
               <Icon size={18} />
               <span className="flex-1">{m.title}</span>
-              <span className="text-[10px] uppercase text-slate-400">{m.layer}</span>
+              <span className="text-[10px] uppercase text-slate-600">{m.layer}</span>
             </NavLink>
           );
         })}
       </nav>
 
-      <div className="border-t border-slate-200 p-3">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-              isActive ? "bg-brand/10 font-medium text-brand" : "text-slate-600 hover:bg-slate-100",
-            )
-          }
-        >
+      <div className="border-t border-navy-800 p-3">
+        <NavLink to="/settings" className={linkClass}>
           <SettingsIcon size={18} />
           Settings
         </NavLink>
