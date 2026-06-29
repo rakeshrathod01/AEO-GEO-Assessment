@@ -1,0 +1,14 @@
+{
+  "name": "eClerx SEO/AEO/GEO Assessment",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  "forwardPorts": [5173, 8000],
+  "portsAttributes": {
+    "5173": { "label": "eClerx Web App", "onAutoForward": "openBrowser" },
+    "8000": { "label": "API (engine)", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start.sh"
+}

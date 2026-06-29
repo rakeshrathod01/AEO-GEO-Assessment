@@ -276,6 +276,20 @@ synthesis — surfaced as the **Download Pitch Deck** button on the dashboard.
 
 ---
 
+## Run it in your browser — no installs (GitHub Codespaces)
+
+For locked-down machines that can't install Python/Node, run the whole app in the
+cloud from your browser. The repo ships a **devcontainer** that auto-installs
+everything, seeds demo data, and starts both servers.
+
+1. Open the repo on GitHub and switch to the `claude/eclerx-seo-aeo-geo-6ijs5k` branch.
+2. Click **Code → Codespaces → Create codespace on this branch**.
+3. Wait for the one-time setup (a few minutes). When the **eClerx Web App** port
+   (5173) is forwarded, click **Open in Browser** (PORTS tab or the popup).
+
+That's a private, authenticated URL only you can open — no local install required.
+Requires GitHub Codespaces to be enabled for your account/org.
+
 ## Quickstart (local-first)
 
 ### Backend
