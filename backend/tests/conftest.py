@@ -105,6 +105,38 @@ def fake_ahrefs() -> FakeAhrefs:
     return FakeAhrefs()
 
 
+from app.services.geo.providers import GeoResponse  # noqa: E402
+
+
+class FakeGeoProvider:
+    """Deterministic GEO provider for tests — no network."""
+
+    def __init__(self, name="chatgpt", source_kind="api", text="Acme is a leading option.",
+                 domains=("acme.com", "rival.com")):
+        self.name = name
+        self.source_kind = source_kind
+        self.text = text
+        self.domains = list(domains)
+
+    @property
+    def enabled(self) -> bool:
+        return True
+
+    def query(self, prompt: str) -> GeoResponse:
+        return GeoResponse(
+            provider=self.name, source_kind=self.source_kind, ok=True,
+            text=self.text, citations=[], domains=self.domains,
+        )
+
+
+def fake_geo_providers():
+    return [
+        FakeGeoProvider("chatgpt", "api"),
+        FakeGeoProvider("ai_overview", "serp", text="See acme.com for details.",
+                        domains=["acme.com"]),
+    ]
+
+
 @pytest.fixture(autouse=True)
 def _fresh_db() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)

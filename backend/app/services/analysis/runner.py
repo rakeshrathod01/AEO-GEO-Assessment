@@ -14,6 +14,7 @@ from app.models.project import Competitor, Project
 from app.schemas.contract import ModuleResult
 from app.services.ahrefs.client import AhrefsClient, build_ahrefs_client
 from app.services.analysis.registry import get_analyzer
+from app.services.geo.providers import build_providers
 from app.services.llm.client import LLMClient
 
 
@@ -33,6 +34,7 @@ class AnalysisContext:
     project_id: int | None = None
     llm: LLMClient | None = None
     ahrefs: AhrefsClient | None = None
+    geo_providers: list = field(default_factory=list)
     generated_at: str | None = None
 
 
@@ -128,6 +130,7 @@ def run_module_analysis(
         project_id=project_id,
         llm=LLMClient(db),
         ahrefs=build_ahrefs_client(db),
+        geo_providers=build_providers(db),
         generated_at=utcnow().isoformat(),
     )
     result = analyzer(ctx)

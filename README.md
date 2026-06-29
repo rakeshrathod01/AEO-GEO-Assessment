@@ -5,9 +5,9 @@ A production, self-hostable, multi-tenant SaaS for enterprise **SEO**, **AEO**
 assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
-> **Build status:** Phase 0 (scaffold) + Phase 1 (ingestion) + Phase 2 (SEO
-> modules 1–2) + Phase 3 (Ahrefs modules 3–5) + Phase 4 (AEO Audit, module 6)
-> complete. Modules 7–9 land in later phases per the build order below.
+> **Build status:** Phases 0–5 complete — scaffold, ingestion, SEO modules 1–2,
+> Ahrefs modules 3–5, AEO Audit (6), and Prompt Identification (7) + GEO Audit (8).
+> Leadership Dashboard (9) + exports land in Phase 6 per the build order below.
 
 ---
 
@@ -63,6 +63,8 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   │   │                on_page, internal_linking, backlinks, keyword_universe, aeo_audit,
 │   │   │   │                runner, registry
 │   │   │   ├── ahrefs/      Ahrefs MCP client (6-month window, cached)
+│   │   │   ├── prompts/     module 7 prompt generator (intent buckets)
+│   │   │   ├── geo/         module 8 swappable providers (api|serp) + brand matching
 │   │   │   ├── llm/         Anthropic client + model tiering (Haiku/Sonnet/Opus)
 │   │   │   ├── exports/     Excel (openpyxl) + PDF (reportlab) builders
 │   │   │   └── benchmarks.py  cited benchmark seeding + lookup
@@ -197,6 +199,34 @@ by AI answer engines, from an AEO feature pass over the raw HTML
 Each finding carries a cited benchmark (Google Search Central, Backlinko). Returns
 the data contract at site + page scope with `competitor_delta` and Excel/PDF exports.
 
+### Prompt Identification + GEO Audit (Phase 5)
+
+**Module 7 — Prompt Identification** generates ~60-70 target prompts from the
+persisted PAA/featured-snippet queries (Phase 3) plus crawled content, grouped into
+intent buckets (`informational`, `commercial`, `transactional`, `navigational`,
+`comparison`). Prompts are persisted and exportable:
+
+```
+GET /api/v1/projects/{id}/prompts              # list (used by module 8)
+GET /api/v1/projects/{id}/prompts/export.xlsx  # Prompt Targets report
+GET /api/v1/projects/{id}/prompts/export.pdf
+```
+
+**Module 8 — GEO Audit** queries each target prompt across a **swappable
+data-source layer** (`app/services/geo/providers.py`) and measures brand
+**mention / citation / position** for the client vs competitors, per source:
+
+| Provider | `source_kind` | Key |
+|----------|---------------|-----|
+| ChatGPT / Gemini / Claude / Perplexity | `api` | openai / gemini / anthropic / perplexity |
+| Google AI Overview (SERP capture) | `serp` | firecrawl |
+
+Every signal is **clearly flagged API vs SERP capture** (in findings evidence and
+the persisted `geo_results.source_kind`). Providers read BYO keys, cache every
+call, and degrade gracefully when unconfigured — adding/swapping a provider is a
+one-line edit to `build_providers`. Per-prompt results: `GET /projects/{id}/geo-results`.
+Cost is bounded by `GEO_MAX_PROMPTS` (sampling is disclosed in the result).
+
 ---
 
 ## Quickstart (local-first)
@@ -283,6 +313,11 @@ Phase 4 covers: AEO feature extraction (question headings, concise answer, schem
 detection), the AEO Audit analyzer across all six readiness surfaces, PAA coverage
 vs persisted serp_queries, and the module + export API end-to-end.
 
+Phase 5 covers: intent classification + prompt generation (volume/buckets/dedupe),
+GEO domain extraction + brand mention/citation/position detection, the GEO analyzer
+with fake providers (API + SERP), graceful no-provider degradation, and the
+prompts/geo API + exports end-to-end (no network/keys).
+
 ```bash
 cd frontend && npm run build   # tsc type-check + production build
 ```
@@ -298,7 +333,7 @@ cd frontend && npm run build   # tsc type-check + production build
 | **2** | **SEO modules 1–2 (Technical SEO, On-Page incl. schema/E-E-A-T/structure) to the data contract at site+page scope with competitor_delta; Haiku/Sonnet tiering; Excel + PDF exports** ✅ |
 | **3** | **Ahrefs MCP client (6-month window, cached) + modules 3 Internal Linking, 4 Backlinks, 5 Keyword Universe; PAA + featured-snippet queries persisted for Phase 5** ✅ |
 | **4** | **AEO Audit (module 6): AI Overview / PAA / Knowledge Panel / Voice + answer-paragraph & structure readiness from crawled content; PAA coverage vs persisted queries; data contract + competitor_delta + exports** ✅ |
-| 5 | Prompt Identification + GEO Audit |
+| **5** | **Prompt Identification (7): ~60-70 target prompts in intent buckets from PAA/snippets + content. GEO Audit (8): per-prompt query across ChatGPT/Gemini/Claude/Perplexity + SERP AI-Overview capture; brand mention/citation/position vs competitors per LLM; API vs SERP source flagged** ✅ |
 | 6 | Leadership Dashboard + exports |
 | 7 | AEO/GEO pitch deck (25–30 slides) |
 | 8 | Settings + deploy |

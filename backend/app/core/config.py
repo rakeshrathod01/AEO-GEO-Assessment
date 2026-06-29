@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     # Cap cleaned text sent to the LLM (chars) — send cleaned text, never raw HTML.
     LLM_TEXT_CHAR_LIMIT: int = 12000
 
+    # --- Prompt Identification (module 7) ---
+    PROMPT_TARGET_COUNT: int = 65  # generate ~60-70 target prompts
+
+    # --- GEO Audit (module 8) ---
+    # Cap prompts queried per GEO run (cost control: prompts x providers calls).
+    GEO_MAX_PROMPTS: int = 30
+
     @property
     def celery_broker(self) -> str:
         return self.CELERY_BROKER_URL or self.REDIS_URL

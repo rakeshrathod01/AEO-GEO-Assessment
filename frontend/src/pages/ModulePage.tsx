@@ -5,7 +5,7 @@ import { apiGet, apiSend, type ModuleResult, type Project } from "@/lib/api";
 import { MODULES } from "@/lib/modules";
 import { ModuleResultView } from "@/components/ModuleResultView";
 
-// Modules with a real analyzer (Phases 2–4). Others remain scaffolded.
+// Modules with a real analyzer (Phases 2–5). Others remain scaffolded.
 const IMPLEMENTED = new Set([
   "technical_seo",
   "on_page",
@@ -13,6 +13,8 @@ const IMPLEMENTED = new Set([
   "backlinks",
   "keyword_universe",
   "aeo_audit",
+  "prompt_identification",
+  "geo_audit",
 ]);
 
 export function ModulePage() {
