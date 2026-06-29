@@ -14,12 +14,14 @@ from app.core.auth import hash_password
 from app.db.session import SessionLocal
 from app.models.crawl import SOURCE_PASTE, STATUS_DONE, CrawlJob, Page
 from app.models.project import Competitor, Project
-from app.models.tenant import ROLE_ADMIN, Tenant, User
+from app.models.tenant import DEFAULT_TENANT_SLUG, ROLE_ADMIN, Tenant, User
 from app.services.benchmarks import seed_default_benchmarks
 from app.services.ingest.extract import extract
 from app.services.ingest.storage import content_hash, save_raw_html
 
-DEMO_TENANT_SLUG = "demo"
+# Seed into the shared "default" tenant so the demo is visible immediately in
+# local-first mode (AUTH_REQUIRED=false) AND to the demo user when auth is on.
+DEMO_TENANT_SLUG = DEFAULT_TENANT_SLUG
 DEMO_EMAIL = "demo@eclerx.com"
 DEMO_PASSWORD = "demo-password"
 
@@ -84,7 +86,7 @@ def seed(db) -> dict:
 
     tenant = db.query(Tenant).filter(Tenant.slug == DEMO_TENANT_SLUG).one_or_none()
     if tenant is None:
-        tenant = Tenant(name="Demo Co", slug=DEMO_TENANT_SLUG)
+        tenant = Tenant(name="Default", slug=DEMO_TENANT_SLUG)
         db.add(tenant)
         db.flush()
 
