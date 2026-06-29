@@ -16,7 +16,7 @@ class Project(Base, TimestampMixin):
     industry: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    competitors: Mapped[list["Competitor"]] = relationship(
+    competitors: Mapped[list[Competitor]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
 
@@ -32,4 +32,4 @@ class Competitor(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[str] = mapped_column(String(2048), nullable=False)
 
-    project: Mapped["Project"] = relationship(back_populates="competitors")
+    project: Mapped[Project] = relationship(back_populates="competitors")

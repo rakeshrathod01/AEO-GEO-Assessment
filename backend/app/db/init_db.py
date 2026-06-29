@@ -5,11 +5,10 @@ For production migrations use Alembic; for local/SQLite this create_all is enoug
 
 from __future__ import annotations
 
-from app.db.base import Base
-from app.db.session import engine
-
 # Importing the models package registers every table on Base.metadata.
 import app.models  # noqa: F401
+from app.db.base import Base
+from app.db.session import engine
 
 
 def init_db() -> None:

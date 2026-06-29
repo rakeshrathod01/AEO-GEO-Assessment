@@ -23,7 +23,7 @@ class ApiKey(Base, TimestampMixin):
     encrypted_value: Mapped[str] = mapped_column(Text, nullable=False)
 
     @classmethod
-    def from_plaintext(cls, provider: str, value: str, label: str | None = None) -> "ApiKey":
+    def from_plaintext(cls, provider: str, value: str, label: str | None = None) -> ApiKey:
         return cls(provider=provider, label=label, encrypted_value=encrypt_secret(value))
 
     def set_value(self, value: str) -> None:

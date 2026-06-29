@@ -3,6 +3,7 @@
 from app.models.analysis import AnalysisRun  # noqa: F401
 from app.models.api_cache import ApiCache  # noqa: F401
 from app.models.benchmark_source import BenchmarkSource  # noqa: F401
+from app.models.crawl import CrawlJob, Page  # noqa: F401
 from app.models.project import Competitor, Project  # noqa: F401
 from app.models.setting import ApiKey  # noqa: F401
 
@@ -12,5 +13,7 @@ __all__ = [
     "ApiKey",
     "BenchmarkSource",
     "Competitor",
+    "CrawlJob",
+    "Page",
     "Project",
 ]

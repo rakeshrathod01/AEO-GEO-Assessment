@@ -10,6 +10,7 @@ import {
   Bot,
   MessageSquare,
   Sparkles,
+  DatabaseZap,
   type LucideIcon,
 } from "lucide-react";
 import { MODULES } from "@/lib/modules";
@@ -49,6 +50,12 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3">
+        <NavLink to="/ingestion" className={linkClass}>
+          <DatabaseZap size={18} />
+          <span className="flex-1">Ingestion</span>
+          <span className="text-[10px] uppercase text-slate-600">Data</span>
+        </NavLink>
+        <div className="my-2 border-t border-navy-800" />
         {MODULES.map((m) => {
           const Icon = ICONS[m.key] ?? FileText;
           return (

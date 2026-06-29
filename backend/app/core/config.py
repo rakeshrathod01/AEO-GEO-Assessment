@@ -54,6 +54,21 @@ class Settings(BaseSettings):
     # Ahrefs pulls always use a trailing window of this many months.
     AHREFS_WINDOW_MONTHS: int = 6
 
+    # --- Ingestion / crawler (Phase 1) ---
+    # Directory where raw HTML is persisted to disk (cleaned text + signals go to DB).
+    RAW_HTML_DIR: str = "./data/raw_html"
+    # How many business-critical pages to select per site.
+    TOP_N_PAGES: int = 50
+    # Per-page fetch timeout (seconds).
+    FETCH_TIMEOUT_SECONDS: int = 30
+    # Below this many chars of cleaned text we treat a Firecrawl result as
+    # bot-blocked / JS-heavy and fall back to Playwright-stealth.
+    MIN_CONTENT_CHARS: int = 200
+    # Run ingestion synchronously in-process instead of dispatching to Celery.
+    # Default True for local-first dev (no Redis/worker required); set False in
+    # production where a Celery worker consumes the queue.
+    INGEST_INLINE: bool = True
+
     @property
     def celery_broker(self) -> str:
         return self.CELERY_BROKER_URL or self.REDIS_URL

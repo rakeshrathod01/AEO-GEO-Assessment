@@ -5,8 +5,8 @@ A production, self-hostable, multi-tenant SaaS for enterprise **SEO**, **AEO**
 assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
-> **Build status:** Phase 0 (scaffold) complete. Modules 1–9 land in later phases
-> per the build order below.
+> **Build status:** Phase 0 (scaffold) + Phase 1 (ingestion pipeline) complete.
+> Modules 1–9 land in later phases per the build order below.
 
 ---
 
@@ -57,7 +57,8 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   ├── models/          projects, api_keys, benchmark_sources, api_cache, analysis
 │   │   ├── schemas/         the shared DATA CONTRACT + request/response models
 │   │   ├── services/        external-call cache helper
-│   │   ├── api/routes/      health, settings, projects, modules
+│   │   │   └── ingest/      sitemap, ranking, fetcher, extract, match, pipeline, progress
+│   │   ├── api/routes/      health, settings, projects, modules, ingest
 │   │   ├── providers.py     BYO credential catalog (Ahrefs MCP, Firecrawl, LLMs)
 │   │   ├── modules_registry.py   the 9 modules (sidebar order)
 │   │   └── main.py
@@ -93,6 +94,33 @@ Every module — at `site` and `page` scope — returns the same shape
 1. Technical SEO 2. On-Page SEO 3. Internal Linking 4. Backlinks
 5. Keyword Universe 6. AEO Audit 7. Prompt Identification 8. GEO Audit
 9. Leadership Dashboard
+
+### Ingestion pipeline (Phase 1)
+
+Three input modes feed one pipeline (`app/services/ingest/`):
+
+| Mode | Endpoint |
+|------|----------|
+| Sitemap URL (auto-ranks top-50) | `POST /api/v1/projects/{id}/ingest/sitemap` |
+| Excel upload (URL column)       | `POST /api/v1/projects/{id}/ingest/excel` |
+| Paste up to 50 URLs             | `POST /api/v1/projects/{id}/ingest/paste` |
+
+Flow: **resolve URLs → rank → select top-50 → crawl → extract → store**.
+
+- **Ranking heuristic** (`ranking.py`) scores by URL depth, money-page patterns
+  (`/pricing`, `/demo`, `/solutions`, …), structural link prominence (hub pages),
+  and sitemap `<priority>`, with penalties for assets/legal/tag/paginated URLs.
+- **Crawl** uses **Firecrawl** first and falls back to **Playwright-stealth** when
+  a result is blocked (403/429/503), shows a bot-challenge interstitial, or renders
+  near-empty (JS-heavy). The decision is the pure function `fetcher.needs_fallback`.
+- **Storage**: raw HTML → disk (`RAW_HTML_DIR`); cleaned text + on-page/technical
+  signals → DB (`pages.signals_json`).
+- **Competitors**: each tracked competitor is crawled on pages **comparable** to the
+  client's 50 — by mirroring client paths onto the competitor domain, or by path
+  similarity when a competitor sitemap is supplied (`competitor_match.py`).
+- **Progress**: a Celery task streams progress; the UI consumes it via SSE
+  (`GET /api/v1/crawl/jobs/{id}/stream`) with a DB snapshot fallback. Local-first
+  runs execute inline (`INGEST_INLINE=true`) so no Redis/worker is required.
 
 ---
 
@@ -162,6 +190,11 @@ cd backend && . .venv/bin/activate && python -m pytest -q
 Phase 0 covers: health/readiness, Fernet encrypt/decrypt/masking, the data
 contract validation, BYO-key upsert/masking, the module registry, and project CRUD.
 
+Phase 1 covers: URL normalization + paste/Excel parsing, sitemap (urlset +
+index) parsing, the ranking heuristic, HTML signal extraction, the
+Firecrawl→Playwright fallback decision, competitor matching, and the full
+ingestion pipeline + API end-to-end with a fake fetcher (no network).
+
 ```bash
 cd frontend && npm run build   # tsc type-check + production build
 ```
@@ -172,8 +205,8 @@ cd frontend && npm run build   # tsc type-check + production build
 
 | Phase | Scope |
 |-------|-------|
-| **0** | **Scaffold (this session): backend + frontend skeleton, data contract, DB models, BYO-key encryption, caching, tests, CI hook** |
-| 1 | Crawler (Firecrawl + Playwright fallback) |
+| **0** | **Scaffold: backend + frontend skeleton, data contract, DB models, BYO-key encryption, caching, tests, CI hook** ✅ |
+| **1** | **Ingestion pipeline: sitemap/Excel/paste input, top-50 ranking, Firecrawl + Playwright-stealth fallback, signal extraction, competitor matching, Celery progress stream** ✅ |
 | 2 | SEO modules (Technical, On-Page) |
 | 3 | Ahrefs modules (Internal Linking, Backlinks, Keyword Universe) |
 | 4 | AEO Audit |

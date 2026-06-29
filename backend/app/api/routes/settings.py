@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.setting import ApiKey
 from app.providers import PROVIDERS, SUPPORTED_PROVIDERS, get_provider
-from app.schemas.settings import ApiKeyOut, ApiKeyIn, ProviderOut
+from app.schemas.settings import ApiKeyIn, ApiKeyOut, ProviderOut
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

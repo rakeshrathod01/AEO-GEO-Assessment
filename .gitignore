@@ -12,6 +12,9 @@ venv/
 *.sqlite
 *.sqlite3
 
+# --- Ingestion artifacts (raw HTML on disk) ---
+data/
+
 # --- Secrets / env ---
 .env
 .env.*
@@ -22,6 +25,7 @@ node_modules/
 dist/
 .vite/
 *.local
+*.tsbuildinfo
 
 # --- Editor / OS ---
 .DS_Store

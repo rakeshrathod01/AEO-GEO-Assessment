@@ -30,3 +30,11 @@ celery_app.conf.update(
 def ping() -> str:
     """Trivial task used to verify worker connectivity."""
     return "pong"
+
+
+@celery_app.task(name="ingest.run")
+def run_ingestion_task(job_id: int) -> None:
+    """Celery entrypoint for an ingestion run (imports lazily to avoid cycles)."""
+    from app.services.ingest.pipeline import run_ingestion
+
+    run_ingestion(job_id)
