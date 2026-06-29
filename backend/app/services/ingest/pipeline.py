@@ -21,7 +21,7 @@ from app.models.crawl import (
     CrawlJob,
     Page,
 )
-from app.models.setting import ApiKey
+from app.models.project import Project
 from app.services.ingest.competitor_match import match_by_similarity, mirror_client_paths
 from app.services.ingest.extract import extract
 from app.services.ingest.fetcher import Fetcher, build_default_fetcher
@@ -29,11 +29,11 @@ from app.services.ingest.progress import ProgressPublisher
 from app.services.ingest.ranking import select_top
 from app.services.ingest.sitemap import fetch_sitemap_entries
 from app.services.ingest.storage import content_hash, save_raw_html
+from app.services.keys import get_api_key
 
 
-def _firecrawl_key(db: Session) -> str | None:
-    row = db.query(ApiKey).filter(ApiKey.provider == "firecrawl").one_or_none()
-    return row.value if row else None
+def _firecrawl_key(db: Session, tenant_id: int | None = None) -> str | None:
+    return get_api_key(db, "firecrawl", tenant_id)
 
 
 def _resolve_ranked(spec: dict, top_n: int):
@@ -105,7 +105,9 @@ def run_ingestion(job_id: int, fetcher: Fetcher | None = None) -> None:
 
         pub = ProgressPublisher(db, job)
         if fetcher is None:
-            fetcher = build_default_fetcher(_firecrawl_key(db))
+            project = db.get(Project, job.project_id)
+            tenant_id = project.tenant_id if project else None
+            fetcher = build_default_fetcher(_firecrawl_key(db, tenant_id))
 
         pub.emit("Resolving client URLs…", processed=0, total=0, status=STATUS_RUNNING)
         ranked = _resolve_ranked(client_spec, top_n)

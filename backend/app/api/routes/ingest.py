@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_tenant, owned_project
 from app.db.session import SessionLocal, get_db
 from app.models.crawl import (
     SOURCE_EXCEL,
@@ -20,6 +21,7 @@ from app.models.crawl import (
     Page,
 )
 from app.models.project import Project
+from app.models.tenant import Tenant
 from app.schemas.ingest import JobOut, PageOut, PasteIngestIn, SitemapIngestIn
 from app.services.ingest.dispatch import dispatch_ingestion
 from app.services.ingest.urls import parse_excel_urls, parse_pasted_urls
@@ -27,11 +29,16 @@ from app.services.ingest.urls import parse_excel_urls, parse_pasted_urls
 router = APIRouter(tags=["ingest"])
 
 
-def _require_project(db: Session, project_id: int) -> Project:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+def _require_project(db: Session, project_id: int, tenant) -> Project:
+    return owned_project(db, project_id, tenant)
+
+
+def _require_job(db: Session, job_id: int, tenant) -> CrawlJob:
+    job = db.get(CrawlJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    owned_project(db, job.project_id, tenant)  # enforce tenant ownership
+    return job
 
 
 def _default_competitor_specs(project: Project) -> list[dict]:
@@ -71,9 +78,10 @@ def _create_and_dispatch(db: Session, project_id: int, source_type: str, plan: d
 
 @router.post("/projects/{project_id}/ingest/sitemap", response_model=JobOut, status_code=201)
 def ingest_sitemap(
-    project_id: int, payload: SitemapIngestIn, db: Session = Depends(get_db)
+    project_id: int, payload: SitemapIngestIn, db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
 ) -> JobOut:
-    project = _require_project(db, project_id)
+    project = _require_project(db, project_id, tenant)
     competitors = (
         [c.model_dump() for c in payload.competitors]
         if payload.competitors
@@ -87,8 +95,11 @@ def ingest_sitemap(
 
 
 @router.post("/projects/{project_id}/ingest/paste", response_model=JobOut, status_code=201)
-def ingest_paste(project_id: int, payload: PasteIngestIn, db: Session = Depends(get_db)) -> JobOut:
-    project = _require_project(db, project_id)
+def ingest_paste(
+    project_id: int, payload: PasteIngestIn, db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
+) -> JobOut:
+    project = _require_project(db, project_id, tenant)
     urls = parse_pasted_urls(payload.text)
     if not urls:
         raise HTTPException(status_code=422, detail="No valid URLs found in pasted text")
@@ -111,8 +122,9 @@ async def ingest_excel(
     url_column: str | None = Form(default=None),
     top_n: int = Form(default=50),
     db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
 ) -> JobOut:
-    project = _require_project(db, project_id)
+    project = _require_project(db, project_id, tenant)
     content = await file.read()
     try:
         urls = parse_excel_urls(content, url_column=url_column)
@@ -128,8 +140,11 @@ async def ingest_excel(
 
 
 @router.get("/projects/{project_id}/jobs", response_model=list[JobOut])
-def list_jobs(project_id: int, db: Session = Depends(get_db)) -> list[JobOut]:
-    _require_project(db, project_id)
+def list_jobs(
+    project_id: int, db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
+) -> list[JobOut]:
+    _require_project(db, project_id, tenant)
     jobs = (
         db.query(CrawlJob)
         .filter(CrawlJob.project_id == project_id)
@@ -140,20 +155,18 @@ def list_jobs(project_id: int, db: Session = Depends(get_db)) -> list[JobOut]:
 
 
 @router.get("/crawl/jobs/{job_id}", response_model=JobOut)
-def get_job(job_id: int, db: Session = Depends(get_db)) -> JobOut:
-    job = db.get(CrawlJob, job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return _job_out(job)
+def get_job(
+    job_id: int, db: Session = Depends(get_db), tenant: Tenant = Depends(get_current_tenant)
+) -> JobOut:
+    return _job_out(_require_job(db, job_id, tenant))
 
 
 @router.get("/crawl/jobs/{job_id}/pages", response_model=list[PageOut])
 def get_job_pages(
-    job_id: int, competitors: bool | None = None, db: Session = Depends(get_db)
+    job_id: int, competitors: bool | None = None, db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
 ) -> list[PageOut]:
-    job = db.get(CrawlJob, job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
+    _require_job(db, job_id, tenant)
     q = db.query(Page).filter(Page.crawl_job_id == job_id)
     if competitors is not None:
         q = q.filter(Page.is_competitor == competitors)

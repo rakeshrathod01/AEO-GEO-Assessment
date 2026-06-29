@@ -8,10 +8,12 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_tenant, owned_project
 from app.db.session import get_db
 from app.models.analysis import AnalysisRun
 from app.models.crawl import STATUS_DONE, CrawlJob, Page
 from app.models.project import Project
+from app.models.tenant import Tenant
 from app.schemas.contract import Scope
 from app.schemas.leadership import LeadershipReport
 from app.services.analysis.leadership import MODULE, run_leadership
@@ -29,7 +31,9 @@ def leadership(
     scope: Scope = Query(default=Scope.site),
     page_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
 ) -> LeadershipReport:
+    owned_project(db, project_id, tenant)
     try:
         return run_leadership(db, project_id, scope.value, page_id)
     except AnalysisError as exc:
@@ -56,8 +60,10 @@ def _latest_report(db: Session, project_id: int, scope: str) -> dict:
 
 @router.get("/leadership/export.xlsx")
 def export_master_excel(
-    project_id: int, scope: Scope = Query(default=Scope.site), db: Session = Depends(get_db)
+    project_id: int, scope: Scope = Query(default=Scope.site), db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
 ) -> Response:
+    owned_project(db, project_id, tenant)
     data = build_master_excel(_latest_report(db, project_id, scope.value))
     return Response(
         content=data,
@@ -68,8 +74,10 @@ def export_master_excel(
 
 @router.get("/leadership/report.pdf")
 def export_leadership_pdf(
-    project_id: int, scope: Scope = Query(default=Scope.site), db: Session = Depends(get_db)
+    project_id: int, scope: Scope = Query(default=Scope.site), db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
 ) -> Response:
+    owned_project(db, project_id, tenant)
     data = build_leadership_pdf(_latest_report(db, project_id, scope.value))
     return Response(
         content=data, media_type="application/pdf",
@@ -79,9 +87,11 @@ def export_leadership_pdf(
 
 @router.get("/leadership/deck.pptx")
 def export_pitch_deck(
-    project_id: int, scope: Scope = Query(default=Scope.site), db: Session = Depends(get_db)
+    project_id: int, scope: Scope = Query(default=Scope.site), db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
 ) -> Response:
     """25-30 slide AEO/GEO pitch deck built from the latest leadership synthesis."""
+    owned_project(db, project_id, tenant)
     report = _latest_report(db, project_id, scope.value)
     project = db.get(Project, project_id)
     domain = urlparse(project.target_url).netloc.lower().replace("www.", "") if project else ""
@@ -95,10 +105,11 @@ def export_pitch_deck(
 
 
 @router.get("/pages")
-def list_project_pages(project_id: int, db: Session = Depends(get_db)) -> list[dict]:
+def list_project_pages(
+    project_id: int, db: Session = Depends(get_db), tenant: Tenant = Depends(get_current_tenant)
+) -> list[dict]:
     """Client pages from the latest completed crawl — powers the page-selector."""
-    if db.get(Project, project_id) is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    owned_project(db, project_id, tenant)
     job = (
         db.query(CrawlJob)
         .filter(CrawlJob.project_id == project_id, CrawlJob.status == STATUS_DONE)

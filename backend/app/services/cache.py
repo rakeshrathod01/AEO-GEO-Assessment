@@ -89,6 +89,10 @@ def get_or_set(
     cached = get_cached(db, key)
     if cached is not None:
         return cached
+    # Throttle real (uncached) external calls per provider.
+    from app.services.ratelimit import limiter
+
+    limiter.acquire(provider, settings.EXTERNAL_RATE_LIMIT_PER_SEC)
     fresh = fetch()
     set_cached(
         db,

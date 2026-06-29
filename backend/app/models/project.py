@@ -11,6 +11,9 @@ from app.db.base import Base, TimestampMixin
 class Project(Base, TimestampMixin):
     __tablename__ = "projects"
 
+    tenant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     target_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     industry: Mapped[str | None] = mapped_column(String(255), nullable=True)

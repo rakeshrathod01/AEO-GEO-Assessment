@@ -15,8 +15,10 @@ psycopg[binary]==3.2.3
 celery==5.4.0
 redis==5.2.1
 
-# --- Security / secrets ---
+# --- Security / secrets / auth ---
 cryptography==44.0.0
+bcrypt==4.2.1
+PyJWT==2.10.1
 
 # --- External integrations (used from Phase 1 on) ---
 httpx==0.28.1

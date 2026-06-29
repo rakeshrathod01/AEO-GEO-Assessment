@@ -1,8 +1,19 @@
 // Thin API client. Base path is proxied to the FastAPI backend (see vite.config.ts).
 const API_BASE = "/api/v1";
+const TOKEN_KEY = "eclerx_token";
+
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const setToken = (t: string | null) =>
+  t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY);
+
+// Attach the bearer token (when present) so requests work under AUTH_REQUIRED.
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = getToken();
+  return { ...(extra ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
   return res.json() as Promise<T>;
 }
@@ -14,7 +25,7 @@ export async function apiSend<T>(
 ): Promise<T | null> {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: authHeaders(body ? { "Content-Type": "application/json" } : undefined),
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
@@ -23,7 +34,9 @@ export async function apiSend<T>(
 }
 
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form });
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST", body: form, headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`upload ${path} failed: ${res.status}`);
   return res.json() as Promise<T>;
 }

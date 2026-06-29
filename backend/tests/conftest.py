@@ -15,6 +15,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db}"
 os.environ["SECRET_KEY"] = "test-secret-key-deterministic"
 os.environ["RAW_HTML_DIR"] = _tmp_html
 os.environ["INGEST_INLINE"] = "true"
+os.environ["EXTERNAL_RATE_LIMIT_PER_SEC"] = "0"  # no throttling in tests
 
 from fastapi.testclient import TestClient  # noqa: E402
 

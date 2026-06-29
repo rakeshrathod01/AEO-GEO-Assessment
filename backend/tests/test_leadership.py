@@ -9,10 +9,10 @@ def _fakes(monkeypatch):
         "app.services.ingest.pipeline.build_default_fetcher", lambda *_a, **_k: FakeFetcher()
     )
     monkeypatch.setattr(
-        "app.services.analysis.runner.build_ahrefs_client", lambda _db: FakeAhrefs()
+        "app.services.analysis.runner.build_ahrefs_client", lambda _db, _t=None: FakeAhrefs()
     )
     monkeypatch.setattr(
-        "app.services.analysis.runner.build_providers", lambda _db: fake_geo_providers()
+        "app.services.analysis.runner.build_providers", lambda _db, _t=None: fake_geo_providers()
     )
 
 

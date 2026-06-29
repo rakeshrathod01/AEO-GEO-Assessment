@@ -1,7 +1,8 @@
-"""BYO credential management.
+"""BYO credential management (tenant-scoped).
 
 Secrets are encrypted at rest (Fernet); plaintext is never returned — only a
-masked preview. URL-kind values (Ahrefs MCP URL) are returned in full.
+masked preview. URL-kind values (Ahrefs MCP URL) are returned in full. Keys are
+isolated per tenant.
 """
 
 from __future__ import annotations
@@ -9,8 +10,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_tenant
 from app.db.session import get_db
 from app.models.setting import ApiKey
+from app.models.tenant import Tenant
 from app.providers import PROVIDERS, SUPPORTED_PROVIDERS, get_provider
 from app.schemas.settings import ApiKeyIn, ApiKeyOut, ProviderOut
 
@@ -33,22 +36,34 @@ def _to_out(key: ApiKey) -> ApiKeyOut:
 
 
 @router.get("/providers", response_model=list[ProviderOut])
-def list_providers(db: Session = Depends(get_db)) -> list[ProviderOut]:
-    """Catalog of every BYO provider plus whether it is configured."""
-    configured = {row[0] for row in db.query(ApiKey.provider).all()}
-    return [
-        ProviderOut(**p.model_dump(), configured=p.key in configured) for p in PROVIDERS
-    ]
+def list_providers(
+    db: Session = Depends(get_db), tenant: Tenant = Depends(get_current_tenant)
+) -> list[ProviderOut]:
+    """Catalog of every BYO provider plus whether it is configured (for this tenant)."""
+    configured = {
+        row[0] for row in db.query(ApiKey.provider).filter(ApiKey.tenant_id == tenant.id).all()
+    }
+    return [ProviderOut(**p.model_dump(), configured=p.key in configured) for p in PROVIDERS]
 
 
 @router.get("/keys", response_model=list[ApiKeyOut])
-def list_keys(db: Session = Depends(get_db)) -> list[ApiKeyOut]:
-    return [_to_out(k) for k in db.query(ApiKey).order_by(ApiKey.provider).all()]
+def list_keys(
+    db: Session = Depends(get_db), tenant: Tenant = Depends(get_current_tenant)
+) -> list[ApiKeyOut]:
+    keys = (
+        db.query(ApiKey)
+        .filter(ApiKey.tenant_id == tenant.id)
+        .order_by(ApiKey.provider)
+        .all()
+    )
+    return [_to_out(k) for k in keys]
 
 
 @router.put("/keys", response_model=ApiKeyOut)
-def upsert_key(payload: ApiKeyIn, db: Session = Depends(get_db)) -> ApiKeyOut:
-    """Create or replace the stored value for a provider (one per provider)."""
+def upsert_key(
+    payload: ApiKeyIn, db: Session = Depends(get_db), tenant: Tenant = Depends(get_current_tenant)
+) -> ApiKeyOut:
+    """Create or replace the stored value for a provider (one per tenant+provider)."""
     provider = payload.provider.lower().strip()
     if provider not in SUPPORTED_PROVIDERS:
         raise HTTPException(
@@ -58,9 +73,13 @@ def upsert_key(payload: ApiKeyIn, db: Session = Depends(get_db)) -> ApiKeyOut:
     if not payload.value.strip():
         raise HTTPException(status_code=422, detail="Value must not be empty")
 
-    key = db.query(ApiKey).filter(ApiKey.provider == provider).one_or_none()
+    key = (
+        db.query(ApiKey)
+        .filter(ApiKey.tenant_id == tenant.id, ApiKey.provider == provider)
+        .one_or_none()
+    )
     if key is None:
-        key = ApiKey.from_plaintext(provider, payload.value, payload.label)
+        key = ApiKey.from_plaintext(provider, payload.value, payload.label, tenant_id=tenant.id)
         db.add(key)
     else:
         key.set_value(payload.value)
@@ -72,8 +91,14 @@ def upsert_key(payload: ApiKeyIn, db: Session = Depends(get_db)) -> ApiKeyOut:
 
 
 @router.delete("/keys/{provider}", status_code=204, response_class=Response)
-def delete_key(provider: str, db: Session = Depends(get_db)) -> Response:
-    key = db.query(ApiKey).filter(ApiKey.provider == provider.lower()).one_or_none()
+def delete_key(
+    provider: str, db: Session = Depends(get_db), tenant: Tenant = Depends(get_current_tenant)
+) -> Response:
+    key = (
+        db.query(ApiKey)
+        .filter(ApiKey.tenant_id == tenant.id, ApiKey.provider == provider.lower())
+        .one_or_none()
+    )
     if key is None:
         raise HTTPException(status_code=404, detail="Key not found")
     db.delete(key)

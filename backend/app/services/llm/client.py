@@ -18,8 +18,8 @@ from enum import Enum
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.setting import ApiKey
 from app.services.cache import get_or_set
+from app.services.keys import get_api_key
 
 
 class Tier(str, Enum):
@@ -39,10 +39,9 @@ def _model_for(tier: Tier) -> str:
 class LLMClient:
     """Thin wrapper. ``enabled`` is False when no Anthropic key is configured."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, tenant_id: int | None = None):
         self.db = db
-        row = db.query(ApiKey).filter(ApiKey.provider == "anthropic").one_or_none()
-        self._api_key = row.value if row else None
+        self._api_key = get_api_key(db, "anthropic", tenant_id)
 
     @property
     def enabled(self) -> bool:

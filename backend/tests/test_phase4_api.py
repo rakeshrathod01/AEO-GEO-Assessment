@@ -9,7 +9,7 @@ def _fakes(monkeypatch):
         "app.services.ingest.pipeline.build_default_fetcher", lambda *_a, **_k: FakeFetcher()
     )
     monkeypatch.setattr(
-        "app.services.analysis.runner.build_ahrefs_client", lambda _db: FakeAhrefs()
+        "app.services.analysis.runner.build_ahrefs_client", lambda _db, _t=None: FakeAhrefs()
     )
 
 

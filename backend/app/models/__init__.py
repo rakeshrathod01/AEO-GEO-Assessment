@@ -9,6 +9,7 @@ from app.models.project import Competitor, Project  # noqa: F401
 from app.models.prompt import Prompt  # noqa: F401
 from app.models.serp import SerpQuery  # noqa: F401
 from app.models.setting import ApiKey  # noqa: F401
+from app.models.tenant import Tenant, User  # noqa: F401
 
 __all__ = [
     "AnalysisRun",
@@ -22,4 +23,6 @@ __all__ = [
     "Project",
     "Prompt",
     "SerpQuery",
+    "Tenant",
+    "User",
 ]

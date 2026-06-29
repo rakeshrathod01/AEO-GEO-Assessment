@@ -1,0 +1,33 @@
+# Fly.io config. Deploy:
+#   cd backend && fly launch --copy-config --no-deploy --dockerfile Dockerfile
+#   fly secrets set SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(48))")
+#   fly secrets set AUTH_REQUIRED=true
+#   fly deploy
+# Add Postgres + Redis: `fly postgres create` and `fly redis create`, then
+#   fly secrets set DATABASE_URL=... REDIS_URL=...
+app = "eclerx-aeo-geo"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8000"
+  APP_ENV = "production"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[http_service.checks]]
+  method = "GET"
+  path = "/api/v1/health"
+  interval = "15s"
+  timeout = "2s"
+
+# Release command runs migrations before each deploy.
+[deploy]
+  release_command = "alembic upgrade head"

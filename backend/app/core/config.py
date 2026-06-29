@@ -86,6 +86,17 @@ class Settings(BaseSettings):
     # Cap prompts queried per GEO run (cost control: prompts x providers calls).
     GEO_MAX_PROMPTS: int = 30
 
+    # --- Auth / multi-tenancy ---
+    # When False (local-first default) requests resolve to a shared "default"
+    # tenant without a token. Set True in production to require JWT auth.
+    AUTH_REQUIRED: bool = False
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24  # 24h
+
+    # --- External-call rate limiting ---
+    # Max external calls per provider per second (0 disables throttling).
+    EXTERNAL_RATE_LIMIT_PER_SEC: float = 5.0
+
     @property
     def celery_broker(self) -> str:
         return self.CELERY_BROKER_URL or self.REDIS_URL

@@ -128,9 +128,9 @@ def run_module_analysis(
         competitor_pages=competitor_pages,
         competitor_targets=competitor_targets,
         project_id=project_id,
-        llm=LLMClient(db),
-        ahrefs=build_ahrefs_client(db),
-        geo_providers=build_providers(db),
+        llm=LLMClient(db, project.tenant_id),
+        ahrefs=build_ahrefs_client(db, project.tenant_id),
+        geo_providers=build_providers(db, project.tenant_id),
         generated_at=utcnow().isoformat(),
     )
     result = analyzer(ctx)

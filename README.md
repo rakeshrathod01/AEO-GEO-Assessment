@@ -5,10 +5,11 @@ A production, self-hostable, multi-tenant SaaS for enterprise **SEO**, **AEO**
 assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
-> **Build status:** Phases 0–7 complete — scaffold, ingestion, all nine modules
-> (SEO 1–2, Ahrefs 3–5, AEO 6, Prompt Identification 7, GEO 8, Leadership Dashboard
-> 9), master Excel + leadership PDF, and the AEO/GEO **pitch deck**. Settings/deploy
-> hardening (Phase 8) remains per the build order below.
+> **Build status: v1.0 — all phases complete.** Scaffold, ingestion, all nine
+> modules (SEO 1–2, Ahrefs 3–5, AEO 6, Prompt Identification 7, GEO 8, Leadership
+> Dashboard 9), master Excel + leadership PDF + pitch deck, and production hardening
+> (JWT auth + multi-tenant isolation, per-provider external-call rate limiting,
+> GitHub Actions CI, one-click deploy, and a seed/demo dataset).
 
 ---
 
@@ -54,11 +55,12 @@ client-ready Excel/PDF/PPTX deliverables.
 .
 ├── backend/                 FastAPI app
 │   ├── app/
-│   │   ├── core/            config, Fernet security, Celery
+│   │   ├── core/            config, Fernet security, Celery, auth (bcrypt + JWT)
 │   │   ├── db/              SQLAlchemy base / session / init
-│   │   ├── models/          projects, api_keys, benchmark_sources, api_cache, analysis
+│   │   ├── models/          tenants, users, projects, api_keys, crawl, analysis, prompt, geo
 │   │   ├── schemas/         the shared DATA CONTRACT + request/response models
-│   │   ├── services/        external-call cache helper
+│   │   ├── seed.py          idempotent demo tenant + project + synthetic crawl
+│   │   ├── services/        external-call cache + per-provider rate limiter + key resolver
 │   │   │   ├── ingest/      sitemap, ranking, fetcher, extract, match, pipeline, progress
 │   │   │   ├── analysis/    base, signals, eeat, internal_graph, aeo_features, technical_seo,
 │   │   │   │                on_page, internal_linking, backlinks, keyword_universe, aeo_audit,
@@ -69,12 +71,17 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   │   ├── llm/         Anthropic client + model tiering (Haiku/Sonnet/Opus)
 │   │   │   ├── exports/     excel, pdf (+ radar), prompts, master (workbook), deck (pptx)
 │   │   │   └── benchmarks.py  cited benchmark seeding + lookup
-│   │   ├── api/routes/      health, settings, projects, modules, ingest, analysis, leadership
+│   │   ├── api/
+│   │   │   ├── deps.py      get_current_tenant / owned_project (tenant isolation)
+│   │   │   └── routes/      health, auth, settings, projects, modules, ingest, analysis, leadership
 │   │   ├── providers.py     BYO credential catalog (Ahrefs MCP, Firecrawl, LLMs)
 │   │   ├── modules_registry.py   the 9 modules (sidebar order)
 │   │   └── main.py
-│   ├── alembic/             migrations (env + initial schema)
+│   ├── alembic/             migrations (env + revisions)
+│   ├── Procfile             web / worker / release process commands
 │   └── tests/
+├── deploy/                  render.yaml · fly.toml · railway.json (one-click)
+├── .github/workflows/ci.yml ruff + migrations + pytest + frontend build
 ├── frontend/                React + Vite app (dark navy/red theme)
 │   ├── src/                 9-module sidebar, Dashboard, Settings, module routes
 │   ├── Dockerfile           nginx static serve + /api proxy
@@ -324,6 +331,62 @@ SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))") \
 Postgres is included (commented) in the compose file — uncomment the service and
 set `DATABASE_URL` to switch from the default SQLite volume.
 
+### Seed / demo data
+
+```bash
+cd backend && . .venv/bin/activate && python -m app.seed
+# -> demo tenant + login (demo@eclerx.com / demo-password), a "Acme Demo" project
+#    and a completed synthetic crawl, so every module + the Leadership Dashboard
+#    run immediately — no live crawl or API keys required.
+```
+
+The seed is idempotent (safe to re-run).
+
+### One-click deploy (Render / Railway / Fly)
+
+Configs live in `deploy/` and `backend/Procfile`. Set a strong `SECRET_KEY` and
+`AUTH_REQUIRED=true` on every platform; attach managed Postgres + Redis and run a
+second process for the Celery worker.
+
+- **Render** — New → Blueprint → point at `deploy/render.yaml` (provisions API +
+  worker + Redis + Postgres; `SECRET_KEY` auto-generated).
+- **Railway** — New Project → Deploy from repo, Root Directory `backend`; add the
+  Redis + Postgres plugins; see `deploy/railway.json` for the start/worker commands.
+- **Fly.io** — `cd backend && fly launch --dockerfile Dockerfile` using
+  `deploy/fly.toml`; `fly secrets set SECRET_KEY=… AUTH_REQUIRED=true`; attach
+  `fly postgres`/`fly redis`; `fly deploy` runs `alembic upgrade head` automatically.
+
+All three run `alembic upgrade head` on release. CI (`.github/workflows/ci.yml`)
+runs ruff + migrations + pytest and the frontend type-check/build on every push.
+
+---
+
+## Auth & multi-tenancy
+
+- **Tenant = isolation boundary.** Projects and BYO API keys belong to a tenant;
+  every request resolves to exactly one tenant and only ever sees that tenant's data.
+- **Local-first default** (`AUTH_REQUIRED=false`): requests resolve to a shared
+  `default` tenant with no login — so the app and tests run out of the box.
+- **Production** (`AUTH_REQUIRED=true`): a JWT bearer token is required.
+
+```bash
+# Register a tenant + admin (bootstrap), then log in.
+curl -X POST :8000/api/v1/auth/register -H 'Content-Type: application/json' \
+  -d '{"email":"you@co.com","password":"supersecret","tenant_name":"Your Co"}'
+curl -X POST :8000/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"you@co.com","password":"supersecret"}'   # -> {access_token, ...}
+# Then call protected routes with:  Authorization: Bearer <access_token>
+```
+
+Passwords are bcrypt-hashed; tokens are HS256 JWTs signed with `SECRET_KEY`. BYO
+keys remain Fernet-encrypted at rest **and** scoped per tenant.
+
+### External-call rate limiting
+
+Outbound calls to paid APIs (Ahrefs, Firecrawl, the LLM/GEO providers) pass through
+a per-provider, process-global throttle (`EXTERNAL_RATE_LIMIT_PER_SEC`, default 5/s;
+`0` disables) applied at the cached-call choke point — cache hits are never throttled.
+
 ---
 
 ## Testing
@@ -363,6 +426,10 @@ sourced benchmarks, page re-scoping), the master Excel + leadership PDF, and the
 pitch deck (slide count in range, ≥1 Key Takeaway per content slide, charts, logo
 embed + offline degrade) — all end-to-end with fakes.
 
+Phase 8 covers: register/login/me, AUTH_REQUIRED enforcement, cross-tenant
+isolation of projects + BYO keys, the per-provider rate limiter, and the seed
+dataset (idempotency + a seeded leadership run). **121 tests pass.**
+
 ```bash
 cd frontend && npm run build   # tsc type-check + production build
 ```
@@ -381,7 +448,7 @@ cd frontend && npm run build   # tsc type-check + production build
 | **5** | **Prompt Identification (7): ~60-70 target prompts in intent buckets from PAA/snippets + content. GEO Audit (8): per-prompt query across ChatGPT/Gemini/Claude/Perplexity + SERP AI-Overview capture; brand mention/citation/position vs competitors per LLM; API vs SERP source flagged** ✅ |
 | **6** | **Leadership Dashboard (9): Opus cross-module synthesis → one prioritized SEO→AEO→GEO roadmap; benchmark markers with sourced tooltips; page-selector re-scoping; master Excel workbook + leadership PDF (table rules + radar)** ✅ |
 | **7** | **AEO/GEO pitch deck (28 slides): storytelling arc Context→Current state→Gaps→Opportunity→Roadmap→eClerx value→CTA; navy/red brand, web-fetched client logo, one Key Takeaway per slide, native charts; Download Pitch Deck button** ✅ |
-| 8 | Settings + deploy |
+| **8** | **Hardening: JWT auth + multi-tenant isolation (per-tenant projects + BYO keys), per-provider external-call rate limiting, GitHub Actions CI, one-click deploy (Render/Railway/Fly), and an idempotent seed/demo dataset** ✅ |
 
 ## Configuration
 

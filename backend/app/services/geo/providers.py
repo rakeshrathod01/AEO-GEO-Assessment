@@ -18,8 +18,8 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session
 
-from app.models.setting import ApiKey
 from app.services.cache import get_or_set
+from app.services.keys import get_api_key
 
 SOURCE_API = "api"
 SOURCE_SERP = "serp"
@@ -60,9 +60,8 @@ class GeoProvider(Protocol):
     def query(self, prompt: str) -> GeoResponse: ...
 
 
-def _key(db: Session, provider: str) -> str | None:
-    row = db.query(ApiKey).filter(ApiKey.provider == provider).one_or_none()
-    return row.value if row else None
+def _key(db: Session, provider: str, tenant_id: int | None = None) -> str | None:
+    return get_api_key(db, provider, tenant_id)
 
 
 class _BaseProvider:
@@ -183,13 +182,13 @@ class SerpAIOverviewProvider(_BaseProvider):
         return {"text": text, "citations": _URL_RE.findall(text)}
 
 
-def build_providers(db: Session) -> list[GeoProvider]:
+def build_providers(db: Session, tenant_id: int | None = None) -> list[GeoProvider]:
     """Instantiate the configured providers (swap by editing this list)."""
     candidates: list[GeoProvider] = [
-        OpenAIProvider(db, _key(db, "openai")),
-        GeminiProvider(db, _key(db, "gemini")),
-        ClaudeProvider(db, _key(db, "anthropic")),
-        PerplexityProvider(db, _key(db, "perplexity")),
-        SerpAIOverviewProvider(db, _key(db, "firecrawl")),
+        OpenAIProvider(db, _key(db, "openai", tenant_id)),
+        GeminiProvider(db, _key(db, "gemini", tenant_id)),
+        ClaudeProvider(db, _key(db, "anthropic", tenant_id)),
+        PerplexityProvider(db, _key(db, "perplexity", tenant_id)),
+        SerpAIOverviewProvider(db, _key(db, "firecrawl", tenant_id)),
     ]
     return [p for p in candidates if p.enabled]

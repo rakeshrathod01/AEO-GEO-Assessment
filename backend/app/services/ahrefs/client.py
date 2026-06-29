@@ -19,8 +19,8 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.setting import ApiKey
 from app.services.cache import get_or_set
+from app.services.keys import get_api_key
 
 
 def trailing_window(months: int | None = None, today: date | None = None) -> tuple[str, str]:
@@ -43,9 +43,8 @@ class AhrefsClient:
     _resolved: bool = False
 
     @classmethod
-    def from_db(cls, db: Session) -> AhrefsClient:
-        row = db.query(ApiKey).filter(ApiKey.provider == "ahrefs_mcp_url").one_or_none()
-        return cls(db=db, mcp_url=row.value if row else None)
+    def from_db(cls, db: Session, tenant_id: int | None = None) -> AhrefsClient:
+        return cls(db=db, mcp_url=get_api_key(db, "ahrefs_mcp_url", tenant_id))
 
     @property
     def enabled(self) -> bool:
@@ -110,5 +109,5 @@ class AhrefsClient:
         ) or []
 
 
-def build_ahrefs_client(db: Session) -> AhrefsClient:
-    return AhrefsClient.from_db(db)
+def build_ahrefs_client(db: Session, tenant_id: int | None = None) -> AhrefsClient:
+    return AhrefsClient.from_db(db, tenant_id)
