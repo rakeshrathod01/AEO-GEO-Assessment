@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import UTC, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -33,10 +33,15 @@ def get_cached(db: Session, cache_key: str) -> Any | None:
     row = db.query(ApiCache).filter(ApiCache.cache_key == cache_key).one_or_none()
     if row is None:
         return None
-    if row.expires_at is not None and row.expires_at < utcnow():
-        db.delete(row)
-        db.commit()
-        return None
+    if row.expires_at is not None:
+        expires = row.expires_at
+        # SQLite returns naive datetimes; assume UTC so the comparison is tz-safe.
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=UTC)
+        if expires < utcnow():
+            db.delete(row)
+            db.commit()
+            return None
     return json.loads(row.response_body)
 
 

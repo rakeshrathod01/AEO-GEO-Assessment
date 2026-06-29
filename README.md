@@ -6,7 +6,8 @@ assessments. Local-first (SQLite) and cloud-ready (Postgres), BYO-keys, with
 client-ready Excel/PDF/PPTX deliverables.
 
 > **Build status:** Phase 0 (scaffold) + Phase 1 (ingestion) + Phase 2 (SEO
-> modules 1–2) complete. Modules 3–9 land in later phases per the build order below.
+> modules 1–2) + Phase 3 (Ahrefs modules 3–5) complete. Modules 6–9 land in later
+> phases per the build order below.
 
 ---
 
@@ -58,7 +59,9 @@ client-ready Excel/PDF/PPTX deliverables.
 │   │   ├── schemas/         the shared DATA CONTRACT + request/response models
 │   │   ├── services/        external-call cache helper
 │   │   │   ├── ingest/      sitemap, ranking, fetcher, extract, match, pipeline, progress
-│   │   │   ├── analysis/    base, signals, eeat, technical_seo, on_page, runner, registry
+│   │   │   ├── analysis/    base, signals, eeat, internal_graph, technical_seo, on_page,
+│   │   │   │                internal_linking, backlinks, keyword_universe, runner, registry
+│   │   │   ├── ahrefs/      Ahrefs MCP client (6-month window, cached)
 │   │   │   ├── llm/         Anthropic client + model tiering (Haiku/Sonnet/Opus)
 │   │   │   ├── exports/     Excel (openpyxl) + PDF (reportlab) builders
 │   │   │   └── benchmarks.py  cited benchmark seeding + lookup
@@ -153,6 +156,27 @@ GET  /api/v1/projects/{id}/modules/{key}/report.pdf?scope=site|page    # PDF
 - **Exports**: every result has **Export Excel** (multi-sheet) and **Generate PDF**
   (font-11 wrap-text tables + an **industry-benchmark radar** with cited sources).
 
+### Ahrefs modules (Phase 3)
+
+The **Ahrefs MCP client** (`app/services/ahrefs/client.py`) pulls from the tenant's
+Ahrefs MCP server (URL in Settings) using a **trailing 6-month window**, with every
+call **cached** in `api_cache`. Missing/unreachable MCP → modules degrade to a
+"configure Ahrefs" finding rather than failing.
+
+- **3 Internal Linking** — builds an internal-link graph from the crawl's raw HTML:
+  orphan pages, inbound/outbound distribution, click depth, and money-page links.
+  (On-site, so crawl-derived; competitor delta uses crawl link counts.)
+- **4 Backlinks** — Ahrefs Domain Rating, referring domains, total backlinks,
+  dofollow ratio; competitor delta on DR / referring domains / backlinks.
+- **5 Keyword Universe** — organic keywords: totals, top-3/top-10 share, traffic,
+  striking-distance (pos 4-10) wins, SERP-feature coverage, and competitor keyword
+  gaps. It also **persists PAA + featured-snippet conversational queries**
+  (`serp_queries`, exposed at `GET /api/v1/projects/{id}/serp-queries`) as the seed
+  set for Phase 5 (Prompt Identification / GEO).
+
+All three return the data contract at site + page scope with `competitor_delta`
+and the same Excel/PDF exports.
+
 ---
 
 ## Quickstart (local-first)
@@ -230,6 +254,11 @@ Phase 2 covers: benchmark seeding/lookup, the Technical SEO + On-Page analyzers
 (scoring, findings, recommendations, competitor_delta), E-E-A-T heuristics, the
 Excel + PDF builders, and the analyze + export API end-to-end (no network/keys).
 
+Phase 3 covers: the Ahrefs client (6-month window math, caching, graceful
+disable), the internal-link graph, the Internal Linking / Backlinks / Keyword
+Universe analyzers (incl. SERP-query persistence + dedupe), and the modules +
+serp-queries API end-to-end with a fake Ahrefs client (no network/keys).
+
 ```bash
 cd frontend && npm run build   # tsc type-check + production build
 ```
@@ -243,7 +272,7 @@ cd frontend && npm run build   # tsc type-check + production build
 | **0** | **Scaffold: backend + frontend skeleton, data contract, DB models, BYO-key encryption, caching, tests, CI hook** ✅ |
 | **1** | **Ingestion pipeline: sitemap/Excel/paste input, top-50 ranking, Firecrawl + Playwright-stealth fallback, signal extraction, competitor matching, Celery progress stream** ✅ |
 | **2** | **SEO modules 1–2 (Technical SEO, On-Page incl. schema/E-E-A-T/structure) to the data contract at site+page scope with competitor_delta; Haiku/Sonnet tiering; Excel + PDF exports** ✅ |
-| 3 | Ahrefs modules (Internal Linking, Backlinks, Keyword Universe) |
+| **3** | **Ahrefs MCP client (6-month window, cached) + modules 3 Internal Linking, 4 Backlinks, 5 Keyword Universe; PAA + featured-snippet queries persisted for Phase 5** ✅ |
 | 4 | AEO Audit |
 | 5 | Prompt Identification + GEO Audit |
 | 6 | Leadership Dashboard + exports |

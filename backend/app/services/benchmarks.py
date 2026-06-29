@@ -51,6 +51,33 @@ DEFAULT_BENCHMARKS: dict[str, tuple] = {
     "canonical_present": (1.0, "bool", "Google Search Central — Canonicalization",
                           "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls",
                           2024, None),
+    # Internal linking
+    "internal_links_per_page_min": (10, "links", "Ahrefs — Internal Links for SEO",
+                                     "https://ahrefs.com/blog/internal-links-for-seo/", 2023,
+                                     "Important pages should have ample internal links."),
+    "orphan_rate_max": (0.0, "ratio", "Ahrefs — Orphan Pages",
+                        "https://ahrefs.com/blog/orphan-pages/", 2023,
+                        "Indexable pages should have at least one internal inbound link."),
+    "max_click_depth": (3, "clicks", "Ahrefs / common crawl-depth guidance",
+                        "https://ahrefs.com/blog/website-structure/", 2023,
+                        "Key pages should be within ~3 clicks of the homepage."),
+    # Backlinks
+    "domain_rating_min": (40, "DR", "Ahrefs — Domain Rating",
+                          "https://ahrefs.com/blog/domain-rating/", 2024,
+                          "DR is a 0-100 strength score; ~40+ is competitive for many niches."),
+    "dofollow_ratio_min": (0.5, "ratio", "Ahrefs — Dofollow vs Nofollow",
+                           "https://ahrefs.com/blog/nofollow-links/", 2023,
+                           "A healthy profile has a substantial share of dofollow links."),
+    "referring_domains_min": (100, "domains", "Ahrefs — Referring Domains",
+                              "https://ahrefs.com/blog/referring-domains/", 2024,
+                              "Referring-domain count correlates with ranking ability."),
+    # Keywords
+    "top10_share_min": (0.3, "ratio", "Ahrefs — Organic Keywords / SERP CTR",
+                        "https://ahrefs.com/blog/google-ctr-study/", 2023,
+                        "A meaningful share of tracked keywords should rank in the top 10."),
+    "striking_distance": (10, "position", "Common SEO practice — positions 4-10",
+                          "https://ahrefs.com/blog/striking-distance-keywords/", 2023,
+                          "Positions 4-10 are quick-win optimization targets."),
 }
 
 

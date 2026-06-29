@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.project import Competitor, Project
+from app.models.serp import SerpQuery
 from app.schemas.project import ProjectIn, ProjectOut
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -48,3 +49,25 @@ def delete_project(project_id: int, db: Session = Depends(get_db)) -> Response:
     db.delete(project)
     db.commit()
     return Response(status_code=204)
+
+
+@router.get("/{project_id}/serp-queries")
+def list_serp_queries(
+    project_id: int, query_type: str | None = None, db: Session = Depends(get_db)
+) -> list[dict]:
+    """PAA + featured-snippet seeds captured during Keyword Universe (for Phase 5)."""
+    if db.get(Project, project_id) is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    q = db.query(SerpQuery).filter(SerpQuery.project_id == project_id)
+    if query_type:
+        q = q.filter(SerpQuery.query_type == query_type)
+    rows = q.order_by(SerpQuery.is_question.desc(), SerpQuery.volume.desc().nullslast()).all()
+    return [
+        {
+            "id": r.id, "query": r.query, "query_type": r.query_type,
+            "is_question": r.is_question, "volume": r.volume,
+            "difficulty": r.difficulty, "ranking_url": r.ranking_url,
+            "seed_keyword": r.seed_keyword,
+        }
+        for r in rows
+    ]

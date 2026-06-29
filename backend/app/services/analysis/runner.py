@@ -12,6 +12,7 @@ from app.models.analysis import AnalysisRun
 from app.models.crawl import STATUS_DONE, CrawlJob, Page
 from app.models.project import Competitor, Project
 from app.schemas.contract import ModuleResult
+from app.services.ahrefs.client import AhrefsClient, build_ahrefs_client
 from app.services.analysis.registry import get_analyzer
 from app.services.llm.client import LLMClient
 
@@ -27,7 +28,11 @@ class AnalysisContext:
     target_url: str
     client_pages: list[Page]
     competitor_pages: dict[str, list[Page]] = field(default_factory=dict)
+    # Ahrefs target per competitor (site URL at site scope; matched page URL at page scope).
+    competitor_targets: dict[str, str] = field(default_factory=dict)
+    project_id: int | None = None
     llm: LLMClient | None = None
+    ahrefs: AhrefsClient | None = None
     generated_at: str | None = None
 
 
@@ -70,6 +75,7 @@ def run_module_analysis(
 
     comp_rows = db.query(Competitor).filter(Competitor.project_id == project_id).all()
     comp_name = {c.id: c.name for c in comp_rows}
+    comp_site_url = {c.name: c.url for c in comp_rows}
 
     if scope == "page":
         page = db.get(Page, page_id) if page_id else client_pages[0]
@@ -104,13 +110,24 @@ def run_module_analysis(
         name = comp_name.get(p.competitor_id, f"Competitor {p.competitor_id}")
         competitor_pages.setdefault(name, []).append(p)
 
+    # Ahrefs target per competitor: matched page URL at page scope, else site URL.
+    competitor_targets: dict[str, str] = {}
+    for name, site_url in comp_site_url.items():
+        if scope == "page" and competitor_pages.get(name):
+            competitor_targets[name] = competitor_pages[name][0].url
+        else:
+            competitor_targets[name] = site_url
+
     ctx = AnalysisContext(
         db=db,
         scope=scope,
         target_url=target_url,
         client_pages=client_pages,
         competitor_pages=competitor_pages,
+        competitor_targets=competitor_targets,
+        project_id=project_id,
         llm=LLMClient(db),
+        ahrefs=build_ahrefs_client(db),
         generated_at=utcnow().isoformat(),
     )
     result = analyzer(ctx)

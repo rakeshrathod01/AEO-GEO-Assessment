@@ -52,6 +52,59 @@ def fake_fetcher() -> FakeFetcher:
     return FakeFetcher()
 
 
+class FakeAhrefs:
+    """Deterministic Ahrefs client for tests — no network/MCP."""
+
+    enabled = True
+
+    def __init__(self, dr=55):
+        self.dr = dr
+
+    def backlinks_stats(self, target: str) -> dict:
+        # Competitors get a slightly stronger profile to produce a delta.
+        boost = 0 if "acme" in target else 10
+        return {
+            "domain_rating": self.dr + boost,
+            "referring_domains": 120 + boost,
+            "backlinks": 5000 + boost * 100,
+            "dofollow_ratio": 0.7,
+        }
+
+    def organic_keywords(self, target: str, limit: int = 1000) -> list[dict]:
+        base = [
+            {"keyword": "how to optimize seo", "volume": 1200, "position": 4,
+             "traffic": 300, "url": f"{target}/guide", "difficulty": 30,
+             "serp_features": ["people_also_ask", "featured_snippet"]},
+            {"keyword": "best seo tools", "volume": 800, "position": 8,
+             "traffic": 120, "url": f"{target}/tools", "difficulty": 40,
+             "serp_features": ["paa"]},
+            {"keyword": "seo pricing", "volume": 500, "position": 2,
+             "traffic": 250, "url": f"{target}/pricing", "difficulty": 25,
+             "serp_features": []},
+        ]
+        if "acme" not in target:
+            base.append(
+                {"keyword": "enterprise seo platform", "volume": 600, "position": 5,
+                 "traffic": 90, "url": f"{target}/platform", "difficulty": 50,
+                 "serp_features": ["featured_snippet"]}
+            )
+        return base
+
+    def referring_domains(self, target: str, limit: int = 100) -> list[dict]:
+        return []
+
+    def anchors(self, target: str, limit: int = 50) -> list[dict]:
+        return []
+
+    def best_by_internal_links(self, target: str, limit: int = 100) -> list[dict]:
+        return []
+
+
+@pytest.fixture
+def fake_ahrefs() -> FakeAhrefs:
+    return FakeAhrefs()
+
+
 @pytest.fixture(autouse=True)
 def _fresh_db() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
